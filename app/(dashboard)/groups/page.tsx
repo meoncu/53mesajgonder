@@ -1,0 +1,1 @@
+export default function GroupsPage(){return <div><h1 className='text-2xl font-semibold mb-4'>Groups</h1><p>Group yönetimi ekranı.</p></div>}

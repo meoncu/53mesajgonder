@@ -1,0 +1,1 @@
+export default function TemplatesPage(){return <div><h1 className='text-2xl font-semibold mb-4'>Templates</h1><p>Mesaj şablonları ekranı.</p></div>}

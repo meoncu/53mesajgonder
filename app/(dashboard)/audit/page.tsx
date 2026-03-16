@@ -1,0 +1,1 @@
+export default function AuditPage(){return <div><h1 className='text-2xl font-semibold mb-4'>Audit Logs</h1><p>Audit timeline ve sistem aktiviteleri.</p></div>}

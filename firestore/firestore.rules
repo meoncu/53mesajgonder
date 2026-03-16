@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && request.auth.token.email == 'meoncu@gmail.com';
+    }
+
+    function isOwner(ownerUserId) {
+      return isAuthenticated() && request.auth.uid == ownerUserId;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      allow write: if isSuperAdmin();
+    }
+
+    match /{collection}/{docId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    match /contacts/{contactId} {
+      allow read, write: if isAuthenticated() && (
+        isOwner(resource.data.ownerUserId) ||
+        isOwner(request.resource.data.ownerUserId) ||
+        isSuperAdmin()
+      );
+    }
+
+    match /groups/{groupId} {
+      allow read, write: if isAuthenticated() && (
+        isOwner(resource.data.ownerUserId) ||
+        isOwner(request.resource.data.ownerUserId) ||
+        isSuperAdmin()
+      );
+    }
+
+    match /message_templates/{id} {
+      allow read, write: if isAuthenticated() && (
+        isOwner(resource.data.ownerUserId) ||
+        isOwner(request.resource.data.ownerUserId) ||
+        isSuperAdmin()
+      );
+    }
+
+    match /campaigns/{id} {
+      allow read, write: if isAuthenticated() && (
+        isOwner(resource.data.ownerUserId) ||
+        isOwner(request.resource.data.ownerUserId) ||
+        isSuperAdmin()
+      );
+    }
+  }
+}

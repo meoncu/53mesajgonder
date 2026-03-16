@@ -1,0 +1,1 @@
+import { Button } from '@/components/ui/button'; export default function SyncPage(){return <div><h1 className='text-2xl font-semibold mb-4'>Sync Settings</h1><p className='mb-4'>Google Contacts senkronizasyonu.</p><Button>Manual Re-sync</Button></div>}

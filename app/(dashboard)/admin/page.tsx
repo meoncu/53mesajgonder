@@ -1,0 +1,1 @@
+export default function AdminPage(){return <div><h1 className='text-2xl font-semibold mb-4'>Admin Settings</h1><p>RBAC ve entegrasyon ayarları.</p></div>}

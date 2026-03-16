@@ -1,0 +1,1 @@
+export default function CampaignsPage(){return <div><h1 className='text-2xl font-semibold mb-4'>Campaigns</h1><p>Campaign planlama ve durum yönetimi.</p></div>}

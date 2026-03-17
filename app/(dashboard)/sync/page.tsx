@@ -1,9 +1,10 @@
 'use client';
 
+import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { useSearchParams } from 'next/navigation';
 
-export default function SyncPage() {
+function SyncContent() {
   const searchParams = useSearchParams();
   const status = searchParams.get('status');
   const created = searchParams.get('created');
@@ -39,5 +40,13 @@ export default function SyncPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function SyncPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-gray-500">Yükleniyor...</div>}>
+      <SyncContent />
+    </Suspense>
   );
 }

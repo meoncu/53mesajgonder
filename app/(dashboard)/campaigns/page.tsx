@@ -140,7 +140,7 @@ export default function CampaignsPage() {
                 <h3 className="font-bold text-gray-900 text-lg">{campaign.name}</h3>
                 {getStatusBadge(campaign.status)}
               </div>
-              <p className="text-gray-500 text-sm line-clamp-1 italic">"{campaign.message}"</p>
+              <p className="text-gray-500 text-sm line-clamp-1 italic">&quot;{campaign.message}&quot;</p>
               <div className="flex items-center gap-4 pt-2">
                 <div className="flex items-center gap-1 text-xs font-medium text-gray-400">
                   <Users size={14} />
@@ -247,7 +247,7 @@ export default function CampaignsPage() {
                     className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-border rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 transition-all font-medium"
                   />
                 </div>
-                <p className="text-xs text-gray-400 mt-2 font-medium">Boş bırakırsanız kampanya 'Taslak' olarak kaydedilir.</p>
+                <p className="text-xs text-gray-400 mt-2 font-medium">Boş bırakırsanız kampanya &apos;Taslak&apos; olarak kaydedilir.</p>
               </div>
 
               <div className="flex gap-4 pt-4 sticky bottom-0 bg-white">

@@ -19,7 +19,7 @@ const navItems = [
   { label: 'Senkronize', href: '/sync', icon: RefreshCw },
   { label: 'Loglar', href: '/audit', icon: History },
   { label: 'Admin', href: '/admin', icon: ShieldCheck },
-];
+] as const;
 
 export function Sidebar() {
   const pathname = usePathname();

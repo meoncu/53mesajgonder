@@ -24,8 +24,23 @@ export const contactSchema = z.object({
   phones: z.array(z.string()).default([]),
   emails: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
+  groupIds: z.array(z.string()).default([]),
   notes: z.string().optional(),
   isActive: z.boolean().default(true),
 });
 
+export const campaignSchema = z.object({
+  id: z.string(),
+  ownerUserId: z.string(),
+  name: z.string(),
+  message: z.string(),
+  groupIds: z.array(z.string()),
+  status: campaignStatusSchema.default('draft'),
+  scheduledAt: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
 export type Role = z.infer<typeof roleSchema>;
+export type Campaign = z.infer<typeof campaignSchema>;
+export type Contact = z.infer<typeof contactSchema>;

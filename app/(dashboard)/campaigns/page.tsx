@@ -135,12 +135,16 @@ export default function CampaignsPage() {
       finalStatus = formData.scheduledAt ? 'scheduled' : 'draft';
     }
     
-    const payload = { ...formData, status: finalStatus };
+    const payload = { 
+      ...formData, 
+      status: finalStatus,
+      scheduledAt: formData.scheduledAt ? new Date(formData.scheduledAt).toISOString() : null
+    };
     
     if (editingCampaignId) {
-      updateMutation.mutate({ id: editingCampaignId, data: payload });
+      updateMutation.mutate({ id: editingCampaignId, data: payload as any });
     } else {
-      createMutation.mutate(payload);
+      createMutation.mutate(payload as any);
     }
   };
 

@@ -49,14 +49,12 @@ export async function GET() {
       await doc.ref.update({ status: 'processing', updatedAt: now });
     }
 
-    return NextResponse.json({ items: campaigns, _v: '1.0.1' });
+    return NextResponse.json({ items: campaigns });
   } catch (error: any) {
     console.error('Failed to process campaigns:', error);
     return NextResponse.json({ 
       error: 'Internal Server Error', 
-      message: error.message,
-      code: error.code,
-      _v: '1.0.1'
+      message: error.message
     }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebase/admin';
 import { assertServiceAuth } from '@/server/middleware/service-auth';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -7,5 +8,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
-  return NextResponse.json({ campaignId: id, status: 'failed', reason: body?.reason ?? null });
+  
+  try {
+    await adminDb.collection('campaigns').doc(id).update({
+      status: 'failed',
+      lastError: body?.reason ?? 'Unknown n8n error',
+      updatedAt: new Date().toISOString()
+    });
+    return NextResponse.json({ campaignId: id, status: 'failed', reason: body?.reason ?? null });
+  } catch (error) {
+    console.error('Failed to fail campaign:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
 }

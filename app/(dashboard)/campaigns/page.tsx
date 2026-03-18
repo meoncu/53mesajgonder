@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { 
   Plus, Trash2, Send, Calendar, Clock, 
-  MessageSquare, Users, CheckCircle2, AlertCircle, X, ExternalLink
+  MessageSquare, Users, CheckCircle2, AlertCircle, X, ExternalLink, Pencil
 } from 'lucide-react';
 
 interface Campaign {
@@ -26,11 +26,13 @@ interface Group {
 export default function CampaignsPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     message: '',
     groupIds: [] as string[],
-    scheduledAt: ''
+    scheduledAt: '',
+    status: 'draft' as Campaign['status']
   });
 
   const { data: campaignsData, isLoading: campaignsLoading } = useQuery({
@@ -81,10 +83,39 @@ export default function CampaignsPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      const res = await fetch(`/api/campaigns/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Kampanya güncellenemedi');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      closeModal();
+    },
+  });
+
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => {
     setIsModalOpen(false);
-    setFormData({ name: '', message: '', groupIds: [], scheduledAt: '' });
+    setEditingCampaignId(null);
+    setFormData({ name: '', message: '', groupIds: [], scheduledAt: '', status: 'draft' });
+  };
+
+  const handleEdit = (campaign: Campaign) => {
+    setEditingCampaignId(campaign.id);
+    setFormData({
+      name: campaign.name,
+      message: campaign.message,
+      groupIds: campaign.groupIds,
+      scheduledAt: campaign.scheduledAt ? campaign.scheduledAt.substring(0, 16) : '',
+      status: campaign.status
+    });
+    setIsModalOpen(true);
   };
 
   const handleGroupToggle = (groupId: string) => {
@@ -98,7 +129,19 @@ export default function CampaignsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate(formData);
+    // Auto-calculate status based on scheduledAt if it's currently draft/scheduled
+    let finalStatus = formData.status;
+    if (formData.status === 'draft' || formData.status === 'scheduled') {
+      finalStatus = formData.scheduledAt ? 'scheduled' : 'draft';
+    }
+    
+    const payload = { ...formData, status: finalStatus };
+    
+    if (editingCampaignId) {
+      updateMutation.mutate({ id: editingCampaignId, data: payload });
+    } else {
+      createMutation.mutate(payload);
+    }
   };
 
   const campaigns = campaignsData?.items || [];
@@ -156,14 +199,29 @@ export default function CampaignsPage() {
             </div>
 
             <div className="flex items-center gap-2 flex-none ml-auto">
+              {(campaign.status === 'draft' || campaign.status === 'scheduled') && (
+                <button 
+                  onClick={() => handleEdit(campaign)} 
+                  className="p-2.5 hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded-xl transition-all"
+                  title="Düzenle"
+                >
+                  <Pencil size={18} />
+                </button>
+              )}
               <button 
                 onClick={() => { if(confirm('Silsin mi?')) deleteMutation.mutate(campaign.id) }} 
                 className="p-2.5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-all"
+                title="Sil"
               >
                 <Trash2 size={18} />
               </button>
-              <Button variant="outline" className="rounded-xl border-gray-200 hover:border-blue-600 hover:text-blue-600 font-bold">
-                Detaylar <ExternalLink size={14} className="ml-2" />
+              <Button 
+                variant="outline" 
+                onClick={() => handleEdit(campaign)}
+                className="rounded-xl border-gray-200 hover:border-blue-600 hover:text-blue-600 font-bold"
+              >
+                {campaign.status === 'draft' || campaign.status === 'scheduled' ? 'Düzenle' : 'Detaylar'}
+                <ExternalLink size={14} className="ml-2" />
               </Button>
             </div>
           </div>
@@ -186,7 +244,9 @@ export default function CampaignsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
             <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h3 className="text-xl font-bold text-gray-900">Yeni Kampanya Planla</h3>
+              <h3 className="text-xl font-bold text-gray-900">
+                {editingCampaignId ? 'Kampanyayı Düzenle' : 'Yeni Kampanya Planla'}
+              </h3>
               <button onClick={closeModal} className="p-2 hover:bg-gray-200 rounded-full text-gray-400"><X size={20} /></button>
             </div>
             
@@ -254,10 +314,12 @@ export default function CampaignsPage() {
                 <Button type="button" variant="outline" onClick={closeModal} className="flex-1 py-6 rounded-2xl border-gray-200 font-bold">İptal</Button>
                 <Button 
                   type="submit" 
-                  disabled={createMutation.isPending}
+                  disabled={createMutation.isPending || updateMutation.isPending}
                   className="flex-1 py-6 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all font-bold text-base"
                 >
-                  {createMutation.isPending ? 'Oluşturuluyor...' : 'Kampanyayı Kaydet'}
+                  {createMutation.isPending || updateMutation.isPending
+                    ? 'Kaydediliyor...' 
+                    : editingCampaignId ? 'Değişiklikleri Kaydet' : 'Kampanyayı Kaydet'}
                 </Button>
               </div>
             </form>

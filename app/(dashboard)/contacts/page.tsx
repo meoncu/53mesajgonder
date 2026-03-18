@@ -78,34 +78,34 @@ export default function ContactsPage() {
   if (error) return <div className="p-8 text-center text-red-500">Hata: {(error as Error).message}</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-4 max-w-6xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 font-outfit">Kişiler</h1>
-          <p className="text-gray-500 text-sm">Rehberinizdeki tüm kişileri buradan yönetebilirsiniz.</p>
+          <h1 className="text-xl font-bold text-gray-900 font-outfit">Kişiler</h1>
+          <p className="text-gray-500 text-xs">Rehber yönetimi ve kişi detayları.</p>
         </div>
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <div className="relative w-full md:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
-            placeholder="İsim, numara veya notlarda ara..."
+            placeholder="Ara..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+            className="w-full pl-9 pr-4 py-1.5 bg-white border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
           />
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-border bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50/50 text-xs uppercase font-bold text-gray-500 border-b border-border">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-gray-50/50 uppercase font-bold text-gray-500 border-b border-border">
               <tr>
-                <th className="px-6 py-4">Ad Soyad</th>
-                <th className="px-6 py-4">İletişim</th>
-                <th className="px-6 py-4">Kaynak</th>
-                <th className="px-6 py-4">Açıklama / Not</th>
-                <th className="px-6 py-4 text-right">İşlem</th>
+                <th className="px-4 py-3">Ad Soyad</th>
+                <th className="px-4 py-3">İletişim</th>
+                <th className="px-4 py-3">Kaynak</th>
+                <th className="px-4 py-3">Açıklama / Not</th>
+                <th className="px-4 py-3 text-right">İşlem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -122,22 +122,22 @@ export default function ContactsPage() {
               ) : (
                 filteredContacts.map((contact: Contact) => (
                   <tr key={contact.id} className="hover:bg-blue-50/30 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-[10px]">
                           {contact.fullName.charAt(0)}
                         </div>
                         <span className="font-semibold text-gray-900">{contact.fullName}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="text-gray-700 font-medium">{contact.primaryPhone || '-'}</span>
-                        <span className="text-gray-400 text-xs">{contact.primaryEmail || ''}</span>
+                        <span className="text-gray-700 font-medium text-xs">{contact.primaryPhone || '-'}</span>
+                        <span className="text-gray-400 text-[10px]">{contact.primaryEmail || ''}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ${
                         contact.source === 'google' 
                           ? 'bg-blue-50 text-blue-700 border border-blue-100' 
                           : 'bg-gray-50 text-gray-600 border border-gray-200'
@@ -145,22 +145,22 @@ export default function ContactsPage() {
                         {contact.source === 'google' ? 'Google' : contact.source}
                       </span>
                     </td>
-                    <td className="px-6 py-4 max-w-xs">
+                    <td className="px-4 py-3 max-w-xs">
                       {contact.notes ? (
-                        <p className="text-gray-600 italic line-clamp-2 text-xs bg-gray-50 p-2 rounded-lg border border-gray-100">
+                        <p className="text-gray-600 italic line-clamp-1 text-[11px] bg-gray-50 px-2 py-1 rounded border border-gray-100">
                           {contact.notes}
                         </p>
                       ) : (
-                        <span className="text-gray-300 text-xs italic">Not eklenmemiş...</span>
+                        <span className="text-gray-300 text-[10px] italic">Not yok...</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => openNoteModal(contact)}
-                        className="p-2 hover:bg-white hover:text-blue-600 hover:shadow-sm border border-transparent hover:border-blue-100 rounded-xl text-gray-400 transition-all active:scale-90"
+                        className="p-1.5 hover:bg-gray-100 hover:text-blue-600 rounded-lg text-gray-400 transition-all active:scale-95"
                         title="Notu Düzenle"
                       >
-                        <Edit3 size={18} />
+                        <Edit3 size={16} />
                       </button>
                     </td>
                   </tr>
@@ -176,42 +176,41 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      {/* Note Edit Modal */}
-      {isNoteModalOpen && selectedContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
-            <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-600 p-2 rounded-xl text-white">
-                  <FileText size={20} />
+           {isNoteModalOpen && selectedContact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="bg-blue-600 p-1.5 rounded-lg text-white">
+                  <FileText size={16} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 leading-none mb-1">Açıklama Ekle</h3>
-                  <p className="text-sm text-gray-500 font-medium">{selectedContact.fullName}</p>
+                  <h3 className="text-base font-bold text-gray-900 leading-none mb-0.5">Açıklama Ekle</h3>
+                  <p className="text-[11px] text-gray-500 font-medium">{selectedContact.fullName}</p>
                 </div>
               </div>
-              <button onClick={closeNoteModal} className="p-2 hover:bg-gray-200 rounded-full text-gray-400 transition-colors">
-                <X size={20} />
+              <button onClick={closeNoteModal} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400 transition-colors">
+                <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleNoteSubmit} className="p-8 space-y-6">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Kişi Notu / Tanışma Hikayesi</label>
+            <form onSubmit={handleNoteSubmit} className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Kişi Notu</label>
                 <textarea
                   autoFocus
                   value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="Bu kişiyi nereden tanıyorsunuz? Özel bir notunuz var mı?"
-                  rows={6}
-                  className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:bg-white outline-none transition-all resize-none shadow-inner"
+                  placeholder="Notunuzu buraya yazın..."
+                  rows={4}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 focus:bg-white outline-none transition-all resize-none text-sm"
                 />
               </div>
-              <div className="flex gap-4">
-                <Button type="button" variant="outline" onClick={closeNoteModal} className="flex-1 py-6 rounded-2xl border-gray-200 hover:bg-gray-50 font-bold">Vazgeç</Button>
+              <div className="flex gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={closeNoteModal} className="flex-1 py-5 rounded-xl border-gray-200 hover:bg-gray-50 font-bold text-sm h-10">Vazgeç</Button>
                 <Button
                   type="submit"
                   disabled={updateNoteMutation.isPending}
-                  className="flex-1 py-6 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200 active:scale-95 transition-all text-base font-bold"
+                  className="flex-1 py-5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md active:scale-95 transition-all text-sm font-bold h-10"
                 >
                   {updateNoteMutation.isPending ? 'Kaydediliyor...' : 'Notu Kaydet'}
                 </Button>

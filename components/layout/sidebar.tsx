@@ -25,17 +25,17 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-100 flex flex-col h-screen sticky top-0">
-      <div className="p-8">
-        <h2 className="text-xl font-black text-blue-600 tracking-tighter flex items-center gap-2">
-          <div className="bg-blue-600 p-1.5 rounded-lg">
-            <MessageSquare className="text-white" size={18} />
+    <aside className="w-60 bg-white border-r border-gray-100 flex flex-col h-screen sticky top-0">
+      <div className="p-6">
+        <h2 className="text-lg font-black text-blue-600 tracking-tighter flex items-center gap-2">
+          <div className="bg-blue-600 p-1 rounded-lg">
+            <MessageSquare className="text-white" size={14} />
           </div>
           HUB<span className="text-gray-900">53</span>
         </h2>
       </div>
 
-      <nav className="flex-1 px-4 space-y-1">
+      <nav className="flex-1 px-3 space-y-0.5">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -45,32 +45,32 @@ export function Sidebar() {
               key={item.href} 
               href={item.href} 
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-200",
+                "flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold transition-all duration-200",
                 isActive 
                   ? "bg-blue-50 text-blue-600 shadow-sm" 
                   : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"
               )}
             >
-              <Icon size={20} className={cn(isActive ? "text-blue-600" : "text-gray-400")} />
+              <Icon size={18} className={cn(isActive ? "text-blue-600" : "text-gray-400")} />
               {item.label}
               {isActive && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600" />
+                <div className="ml-auto w-1 h-1 rounded-full bg-blue-600" />
               )}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-6 mt-auto">
-        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+      <div className="p-4 mt-auto">
+        <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Hesap</p>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600 text-xs text-center border border-blue-200">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600 text-[10px] text-center border border-blue-200">
               EO
             </div>
             <div className="overflow-hidden">
-              <p className="text-xs font-bold text-gray-900 truncate">Eren Öncü</p>
-              <p className="text-[10px] text-gray-400 truncate">Pro Plan</p>
+              <p className="text-[10px] font-bold text-gray-900 truncate">Eren Öncü</p>
+              <p className="text-[9px] text-gray-400 truncate">Pro Plan</p>
             </div>
           </div>
         </div>

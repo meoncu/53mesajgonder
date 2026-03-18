@@ -160,30 +160,30 @@ export default function CampaignsPage() {
   if (campaignsLoading) return <div className="p-8 text-center text-gray-500">Kampanyalar yükleniyor...</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 font-outfit">Kampanyalar</h1>
-          <p className="text-gray-500 text-sm">Grup bazlı toplu mesaj gönderimlerinizi planlayın.</p>
+          <h1 className="text-xl font-bold text-gray-900 font-outfit">Kampanyalar</h1>
+          <p className="text-gray-500 text-xs">Grup bazlı toplu mesaj gönderimlerinizi planlayın.</p>
         </div>
-        <Button onClick={openModal} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-100 flex items-center gap-2 px-6">
-          <Send size={18} /> Yeni Kampanya Başlat
+        <Button onClick={openModal} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm flex items-center gap-1.5 px-4 h-9 text-sm">
+          <Send size={16} /> Yeni Kampanya Başlat
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-3">
         {campaigns.map((campaign: Campaign) => (
-          <div key={campaign.id} className="bg-white border border-border rounded-2xl p-5 hover:shadow-lg transition-all flex flex-col md:flex-row items-start md:items-center gap-6 group">
-            <div className="bg-blue-50 p-4 rounded-2xl text-blue-600 flex-none group-hover:bg-blue-600 group-hover:text-white transition-colors">
-              <MessageSquare size={24} />
+          <div key={campaign.id} className="bg-white border border-border rounded-xl p-4 hover:shadow-md transition-all flex flex-col md:flex-row items-start md:items-center gap-4 group">
+            <div className="bg-blue-50 p-3 rounded-xl text-blue-600 flex-none group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <MessageSquare size={20} />
             </div>
             
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-3">
-                <h3 className="font-bold text-gray-900 text-lg">{campaign.name}</h3>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-gray-900 text-base truncate">{campaign.name}</h3>
                 {getStatusBadge(campaign.status)}
               </div>
-              <p className="text-gray-500 text-sm line-clamp-1 italic">&quot;{campaign.message}&quot;</p>
+              <p className="text-gray-500 text-xs line-clamp-1 italic">&quot;{campaign.message}&quot;</p>
               <div className="flex items-center gap-4 pt-2">
                 <div className="flex items-center gap-1 text-xs font-medium text-gray-400">
                   <Users size={14} />
@@ -198,82 +198,80 @@ export default function CampaignsPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-none ml-auto">
+            <div className="flex items-center gap-1.5 flex-none ml-auto">
               {(campaign.status === 'draft' || campaign.status === 'scheduled') && (
                 <button 
                   onClick={() => handleEdit(campaign)} 
-                  className="p-2.5 hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded-xl transition-all"
+                  className="p-2 hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded-lg transition-all"
                   title="Düzenle"
                 >
-                  <Pencil size={18} />
+                  <Pencil size={16} />
                 </button>
               )}
               <button 
                 onClick={() => { if(confirm('Silsin mi?')) deleteMutation.mutate(campaign.id) }} 
-                className="p-2.5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-all"
+                className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-lg transition-all"
                 title="Sil"
               >
-                <Trash2 size={18} />
+                <Trash2 size={16} />
               </button>
               <Button 
                 variant="outline" 
                 onClick={() => handleEdit(campaign)}
-                className="rounded-xl border-gray-200 hover:border-blue-600 hover:text-blue-600 font-bold"
+                className="h-8 rounded-lg border-gray-200 hover:border-blue-600 hover:text-blue-600 font-bold text-xs"
               >
                 {campaign.status === 'draft' || campaign.status === 'scheduled' ? 'Düzenle' : 'Detaylar'}
-                <ExternalLink size={14} className="ml-2" />
               </Button>
             </div>
           </div>
         ))}
 
         {campaigns.length === 0 && (
-          <div className="py-24 bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl text-center">
+          <div className="py-24 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl text-center">
             <MessageSquare className="mx-auto text-gray-200 mb-6" size={64} />
             <h3 className="text-xl font-bold text-gray-900 mb-2">Henüz kampanya oluşturulmadı</h3>
             <p className="text-gray-500 mb-8 max-w-sm mx-auto">Gruplarınıza toplu mesaj göndermek için ilk kampanyanızı şimdi başlatın.</p>
-            <Button onClick={openModal} className="bg-blue-600 text-white rounded-xl">
+            <Button onClick={openModal} className="bg-blue-600 text-white rounded-lg h-10 px-6 font-bold">
               Yeni Kampanya Oluştur
             </Button>
           </div>
         )}
       </div>
 
-      {/* New Campaign Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h3 className="text-xl font-bold text-gray-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-base font-bold text-gray-900">
                 {editingCampaignId ? 'Kampanyayı Düzenle' : 'Yeni Kampanya Planla'}
               </h3>
-              <button onClick={closeModal} className="p-2 hover:bg-gray-200 rounded-full text-gray-400"><X size={20} /></button>
+              <button onClick={closeModal} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400"><X size={18} /></button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-8 space-y-6 overflow-y-auto">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Kampanya Adı</label>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Kampanya Adı</label>
                 <input 
                   required
                   type="text" 
                   placeholder="Örn: Ramazan Bayramı Tebrik Mesajı"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-5 py-3 bg-gray-50 border border-border rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all font-medium"
+                  className="w-full px-4 py-2 bg-gray-50 border border-border rounded-lg outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all font-medium text-sm"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Hedef Gruplar</label>
-                <div className="flex flex-wrap gap-2">
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Hedef Gruplar</label>
+                <div className="flex flex-wrap gap-1.5">
                   {groups.map((group: Group) => (
                     <button
                       key={group.id}
                       type="button"
                       onClick={() => handleGroupToggle(group.id)}
-                      className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                         formData.groupIds.includes(group.id)
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                           : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'
                       }`}
                     >
@@ -283,39 +281,38 @@ export default function CampaignsPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Mesaj İçeriği</label>
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mesaj İçeriği</label>
                 <textarea 
                   required
-                  rows={5}
+                  rows={4}
                   value={formData.message}
                   onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
                   placeholder="Gönderilecek mesajı buraya yazın..."
-                  className="w-full px-5 py-4 bg-gray-50 border border-border rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all resize-none shadow-inner"
+                  className="w-full px-4 py-3 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all resize-none text-sm"
                 />
-                <p className="text-[10px] text-gray-400 mt-2 font-medium">İpucu: Kişiye özel mesaj için [isim] etiketi eklenebilir (Geliştirilme aşamasında).</p>
+                <p className="text-[10px] text-gray-400 font-medium">İpucu: Kişiye özel mesaj için [isim] etiketi eklenebilir.</p>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Yayınlanma Tarihi (Opsiyonel)</label>
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Yayınlanma Tarihi (Opsiyonel)</label>
                 <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                   <input 
                     type="datetime-local" 
                     value={formData.scheduledAt}
                     onChange={(e) => setFormData(prev => ({ ...prev, scheduledAt: e.target.value }))}
-                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-border rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 transition-all font-medium"
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-sm"
                   />
                 </div>
-                <p className="text-xs text-gray-400 mt-2 font-medium">Boş bırakırsanız kampanya &apos;Taslak&apos; olarak kaydedilir.</p>
               </div>
 
-              <div className="flex gap-4 pt-4 sticky bottom-0 bg-white">
-                <Button type="button" variant="outline" onClick={closeModal} className="flex-1 py-6 rounded-2xl border-gray-200 font-bold">İptal</Button>
+              <div className="flex gap-3 pt-2 sticky bottom-0 bg-white">
+                <Button type="button" variant="outline" onClick={closeModal} className="flex-1 h-9 rounded-lg border-gray-200 font-bold text-xs uppercase tracking-tight">İptal</Button>
                 <Button 
                   type="submit" 
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="flex-1 py-6 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all font-bold text-base"
+                  className="flex-1 h-9 rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all font-bold text-xs uppercase tracking-tight"
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? 'Kaydediliyor...' 

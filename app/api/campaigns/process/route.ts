@@ -20,20 +20,23 @@ export async function GET() {
     for (const doc of snapshot.docs) {
       const data = doc.data();
       const groupIds = data.groupIds || [];
-      
-      // Fetch all unique contacts for these groups
-      const contactsSnapshot = await adminDb.collection('contacts')
-        .where('groupIds', 'array-contains-any', groupIds)
-        .get();
+      let contacts: any[] = [];
 
-      const contacts = contactsSnapshot.docs.map(cDoc => {
-        const cData = cDoc.data();
-        return {
-          id: cDoc.id,
-          fullName: cData.fullName,
-          phone: cData.normalizedPrimaryPhone || cData.primaryPhone
-        };
-      }).filter(c => !!c.phone); // Only contacts with phone
+      if (groupIds.length > 0) {
+        // Fetch all unique contacts for these groups
+        const contactsSnapshot = await adminDb.collection('contacts')
+          .where('groupIds', 'array-contains-any', groupIds)
+          .get();
+
+        contacts = contactsSnapshot.docs.map(cDoc => {
+          const cData = cDoc.data();
+          return {
+            id: cDoc.id,
+            fullName: cData.fullName,
+            phone: cData.normalizedPrimaryPhone || cData.primaryPhone
+          };
+        }).filter(c => !!c.phone); // Only contacts with phone
+      }
 
       campaigns.push({
         id: doc.id,
@@ -46,9 +49,14 @@ export async function GET() {
       await doc.ref.update({ status: 'processing', updatedAt: now });
     }
 
-    return NextResponse.json({ items: campaigns });
-  } catch (error) {
+    return NextResponse.json({ items: campaigns, _v: '1.0.1' });
+  } catch (error: any) {
     console.error('Failed to process campaigns:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal Server Error', 
+      message: error.message,
+      code: error.code,
+      _v: '1.0.1'
+    }, { status: 500 });
   }
 }

@@ -9,6 +9,7 @@ import {
   ShieldCheck, Share2, Layers, MessageSquare,
   Users2, FolderOpen, History
 } from 'lucide-react';
+import packageInfo from '@/package.json';
 
 const navItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -74,6 +75,16 @@ export function Sidebar() {
               <p className="text-[9px] text-gray-400 truncate">Pro Plan</p>
             </div>
           </div>
+        </div>
+        <div className="mt-3 px-3 flex flex-col gap-1 text-[9px] font-bold text-gray-400">
+           <div className="flex items-center justify-between">
+              <span>Versiyon</span>
+              <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-lg border border-blue-100">v{packageInfo.version}</span>
+           </div>
+           <div className="flex items-center gap-1 opacity-50">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              <span>Sistem Aktif</span>
+           </div>
         </div>
       </div>
     </aside>

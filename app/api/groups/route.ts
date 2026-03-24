@@ -1,44 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
-import { getCachedGroups, setCachedGroups, invalidateGroupsCache } from '@/lib/cache';
-import fs from 'fs';
-import path from 'path';
-
-const BACKUP_DIR = path.join(process.cwd(), 'data');
-const BACKUP_FILE = path.join(BACKUP_DIR, 'groups_backup.json');
-
-if (!fs.existsSync(BACKUP_DIR)) {
-  fs.mkdirSync(BACKUP_DIR, { recursive: true });
-}
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    // 1. Memory Cache check
-    const cached = getCachedGroups();
-    if (cached) return NextResponse.json({ items: cached, fromCache: true });
+    const supabase = getSupabaseAdmin();
+    const { data: items, error: dbError } = await supabase
+      .from('groups')
+      .select('*')
+      .order('name', { ascending: true });
 
-    try {
-      const snapshot = await adminDb.collection('groups').get();
-      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      // Update memory cache
-      setCachedGroups(items);
-      
-      // Update file backup
-      fs.writeFileSync(BACKUP_FILE, JSON.stringify(items, null, 2));
+    if (dbError) throw dbError;
 
-      return NextResponse.json({ items });
-    } catch (dbError: any) {
-      if (dbError.code === 8 || dbError.message?.toLowerCase().includes('quota') || dbError.message?.toLowerCase().includes('resource_exhausted')) {
-        if (fs.existsSync(BACKUP_FILE)) {
-          const backupData = JSON.parse(fs.readFileSync(BACKUP_FILE, 'utf-8'));
-          return NextResponse.json({ items: backupData, offline: true });
-        }
-      }
-      throw dbError;
-    }
+    // Map snake_case to camelCase
+    const formattedItems = (items || []).map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      color: item.color,
+      memberCount: item.member_count,
+      ownerUserId: item.owner_user_id,
+      createdAt: item.created_at
+    }));
+
+    return NextResponse.json({ items: formattedItems });
   } catch (error) {
-    console.error('Failed to fetch groups:', error);
+    console.error('Failed to fetch groups from Supabase:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -46,37 +31,38 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, type, color } = body;
+    const { name, color } = body;
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
-    const docRef = await adminDb.collection('groups').add({
-      name,
-      description: description || '',
-      type: type || 'contact',
-      color: color || '#3B82F6', // Default blue-600
-      ownerUserId: 'meoncu@gmail.com', // Demo user
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      memberCount: 0
+    const supabase = getSupabaseAdmin();
+    const id = Math.random().toString(36).substring(2, 15);
+    
+    const { data, error: dbError } = await supabase
+      .from('groups')
+      .insert({
+        id,
+        name,
+        color: color || '#3B82F6',
+        member_count: 0,
+        owner_user_id: 'meoncu@gmail.com',
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (dbError) throw dbError;
+
+    return NextResponse.json({
+      id: data.id,
+      name: data.name,
+      color: data.color,
+      memberCount: data.member_count
     });
-
-    const newGroup = {
-      id: docRef.id,
-      name,
-      description,
-      type: type || 'contact',
-      color: color || '#3B82F6', // Default blue-600
-      memberCount: 0
-    };
-
-    invalidateGroupsCache();
-
-    return NextResponse.json(newGroup);
   } catch (error) {
-    console.error('Failed to create group:', error);
+    console.error('Failed to create group in Supabase:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

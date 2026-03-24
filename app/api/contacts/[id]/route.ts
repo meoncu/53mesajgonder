@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, admin } from '@/lib/firebase/admin';
-import { invalidateContactsCache } from '@/lib/cache';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function PATCH(
   request: NextRequest,
@@ -11,40 +10,47 @@ export async function PATCH(
     const body = await request.json();
     const { notes, fullName, primaryPhone, tags, groupIds } = body;
 
-    const contactRef = adminDb.collection('contacts').doc(id);
-    const prevDoc = await contactRef.get();
-    const prevData = prevDoc.data();
-    const prevGroupIds = prevData?.groupIds || [];
-
+    const supabase = getSupabaseAdmin();
+    
+    // Map camcelCase body to snake_case DB fields
     const updateData: any = {
-      updatedAt: new Date().toISOString()
+      updated_at: new Date().toISOString()
     };
     
     if (notes !== undefined) updateData.notes = notes;
-    if (fullName !== undefined) updateData.fullName = fullName;
-    if (primaryPhone !== undefined) updateData.primaryPhone = primaryPhone;
+    if (fullName !== undefined) updateData.full_name = fullName;
+    if (primaryPhone !== undefined) updateData.primary_phone = primaryPhone;
     if (tags !== undefined) updateData.tags = tags;
-    if (groupIds !== undefined) updateData.groupIds = groupIds;
+    if (groupIds !== undefined) updateData.group_ids = groupIds;
 
-    await contactRef.update(updateData);
-    invalidateContactsCache();
+    const { data, error: dbError } = await supabase
+      .from('contacts')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
 
-    // Update group member counts if groupIds changed
+    if (dbError) throw dbError;
+
+    // Optional: Recalculate member counts for affected groups
     if (groupIds !== undefined) {
-      const allAffectedGroups = Array.from(new Set([...prevGroupIds, ...groupIds]));
-      for (const gid of allAffectedGroups) {
-        const groupRef = adminDb.collection('groups').doc(gid);
-        const countSnapshot = await adminDb.collection('contacts')
-          .where('groupIds', 'array-contains', gid)
-          .count()
-          .get();
-        await groupRef.update({ memberCount: countSnapshot.data().count });
+      const allGroups = groupIds || [];
+      for (const gid of allGroups) {
+        const { count } = await supabase
+          .from('contacts')
+          .select('*', { count: 'exact', head: true })
+          .contains('group_ids', [gid]);
+          
+        await supabase
+          .from('groups')
+          .update({ member_count: count || 0 })
+          .eq('id', gid);
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, item: data });
   } catch (error) {
-    console.error('Failed to update contact:', error);
+    console.error('Failed to update contact in Supabase:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -55,38 +61,40 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    
-    // Get the contact first to find groupIds
-    const contactRef = adminDb.collection('contacts').doc(id);
-    const contactDoc = await contactRef.get();
-    
-    if (!contactDoc.exists) {
-      return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
-    }
-    
-    const contactData = contactDoc.data();
-    const groupIds = contactData?.groupIds || [];
-    
-    // Delete the contact
-    await contactRef.delete();
-    invalidateContactsCache();
-    
-    // Update member counts for all groups it belonged to
-    if (groupIds.length > 0) {
-      for (const groupId of groupIds) {
-        const groupRef = adminDb.collection('groups').doc(groupId);
-        const countSnapshot = await adminDb.collection('contacts')
-          .where('groupIds', 'array-contains', groupId)
-          .count()
-          .get();
+    const supabase = getSupabaseAdmin();
+
+    // Get current contact info to find groups before deletion
+    const { data: contactData } = await supabase
+      .from('contacts')
+      .select('group_ids')
+      .eq('id', id)
+      .single();
+
+    const { error: deleteError } = await supabase
+      .from('contacts')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) throw deleteError;
+
+    // Recalculate counts for groups this contact was in
+    if (contactData?.group_ids?.length) {
+      for (const gid of contactData.group_ids) {
+        const { count } = await supabase
+          .from('contacts')
+          .select('*', { count: 'exact', head: true })
+          .contains('group_ids', [gid]);
           
-        await groupRef.update({ memberCount: countSnapshot.data().count });
+        await supabase
+          .from('groups')
+          .update({ member_count: count || 0 })
+          .eq('id', gid);
       }
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete contact:', error);
+    console.error('Failed to delete contact from Supabase:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

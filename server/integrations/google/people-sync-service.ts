@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { z } from 'zod';
 import { contactSchema } from '@/lib/validation/domain';
 
@@ -18,6 +18,7 @@ export class GooglePeopleSyncService {
     auth.setCredentials({ access_token: accessToken });
 
     const people = google.people({ version: 'v1', auth });
+    const supabase = getSupabaseAdmin();
     
     let created = 0;
     let skipped = 0;
@@ -40,7 +41,6 @@ export class GooglePeopleSyncService {
         const emails = person.emailAddresses?.map(e => e.value || '').filter(Boolean) || [];
         
         const primaryPhone = phones[0] || '';
-        // Basit bir temizleme: Boşluk ve tireleri kaldır
         const normalizedPhone = primaryPhone.replace(/\s+/g, '').replace(/-/g, '');
 
         if (!primaryPhone && emails.length === 0) {
@@ -48,34 +48,42 @@ export class GooglePeopleSyncService {
           continue;
         }
 
-        const contactData: Contact = {
-          id: resourceName.replace('people/', 'google_'),
-          ownerUserId,
+        const id = resourceName.replace('people/', 'google_');
+        
+        // Map to snake_case for Supabase
+        const dbContact = {
+          id,
+          full_name: fullName,
+          first_name: person.names?.[0]?.givenName || '',
+          last_name: person.names?.[0]?.familyName || '',
+          primary_phone: primaryPhone,
+          normalized_primary_phone: normalizedPhone,
+          primary_email: emails[0] || '',
           source: 'google',
-          fullName,
-          firstName: person.names?.[0]?.givenName || '',
-          lastName: person.names?.[0]?.familyName || '',
-          primaryPhone,
-          normalizedPrimaryPhone: normalizedPhone,
-          primaryEmail: emails[0] || '',
-          phones,
-          emails,
+          notes: '',
           tags: ['google-sync'],
-          groupIds: [],
-          isActive: true,
+          group_ids: [],
+          is_active: true,
+          owner_user_id: ownerUserId,
+          updated_at: new Date().toISOString()
         };
 
-        await adminDb.collection('contacts').doc(contactData.id).set(contactData, { merge: true });
+        const { error: dbError } = await supabase
+          .from('contacts')
+          .upsert(dbContact);
+
+        if (dbError) {
+          console.error(`Sync error for contact ${id}:`, dbError);
+          skipped++;
+          continue;
+        }
+
         created++;
       }
 
       return { created, updated: 0, skipped, deleted: 0 };
     } catch (error: any) {
-      console.error('PeopleSyncService Error Detail:', {
-        message: error.message,
-        response: error.response?.data,
-        errors: error.response?.data?.error?.errors
-      });
+      console.error('PeopleSyncService Error Detail:', error);
       throw error;
     }
   }
@@ -84,4 +92,3 @@ export class GooglePeopleSyncService {
     return { created: 0, updated: 0, skipped: 0, deleted: 0 };
   }
 }
-

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function PATCH(
   request: NextRequest,
@@ -10,18 +10,24 @@ export async function PATCH(
     const body = await request.json();
     const { name, description, color } = body;
 
+    const supabase = getSupabaseAdmin();
     const updateData: any = {
-      updatedAt: new Date().toISOString()
+      updated_at: new Date().toISOString()
     };
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (color !== undefined) updateData.color = color;
 
-    await adminDb.collection('groups').doc(id).update(updateData);
+    const { error: dbError } = await supabase
+      .from('groups')
+      .update(updateData)
+      .eq('id', id);
+
+    if (dbError) throw dbError;
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to update group:', error);
+    console.error('Failed to update group in Supabase:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -32,11 +38,22 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await adminDb.collection('groups').doc(id).delete();
-    // In a real app, you might want to also remove this group from all contacts
+    const supabase = getSupabaseAdmin();
+
+    const { error: dbError } = await supabase
+      .from('groups')
+      .delete()
+      .eq('id', id);
+
+    if (dbError) throw dbError;
+
+    // Optional: Remove this group from all contacts
+    // Supabase array removal: update contacts set group_ids = array_remove(group_ids, id)
+    // For now we'll just delete the group.
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete group:', error);
+    console.error('Failed to delete group from Supabase:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

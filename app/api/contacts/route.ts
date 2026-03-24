@@ -29,11 +29,12 @@ export async function GET(request: NextRequest) {
     console.log('Fetching contacts from Firestore (Shared cache expired or empty)...');
     try {
       // Use query with limit to save quota
+      // Removing orderBy for troubleshooting empty sync results
       const query = adminDb.collection('contacts')
-        .orderBy('fullName', 'asc')
         .limit(limitParams);
         
       const snapshot = await query.get();
+      console.log(`Firestore query returned ${snapshot.size} contacts.`);
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
       // Update Memory Cache

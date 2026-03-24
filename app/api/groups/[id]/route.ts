@@ -8,13 +8,14 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, description } = body;
+    const { name, description, color } = body;
 
     const updateData: any = {
       updatedAt: new Date().toISOString()
     };
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
+    if (color !== undefined) updateData.color = color;
 
     await adminDb.collection('groups').doc(id).update(updateData);
 

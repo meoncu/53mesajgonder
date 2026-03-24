@@ -6,3 +6,4 @@ coverage
 client_secret_*.json
 mesajgonder-*.json
 build_log*.txt
+data/

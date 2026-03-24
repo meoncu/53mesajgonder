@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { 
   Plus, Trash2, Edit2, Users, Search, X, 
-  LayoutGrid, List, Columns, GripVertical, Phone, User, Tag
+  LayoutGrid, List, Columns, User, Phone, Layers
 } from 'lucide-react';
 
 interface Group {
@@ -14,7 +14,6 @@ interface Group {
   description: string;
   memberCount: number;
   type?: 'contact' | 'campaign';
-  color?: string;
 }
 
 interface Contact {
@@ -24,7 +23,7 @@ interface Contact {
   groupIds: string[];
 }
 
-export default function GroupsPage() {
+export default function CampaignGroupsPage() {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<'cards' | 'board' | 'matrix'>('board');
   
@@ -35,7 +34,7 @@ export default function GroupsPage() {
   
   // Group editing state
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '', type: 'contact' as 'contact' | 'campaign', color: '#3B82F6' });
+  const [formData, setFormData] = useState({ name: '', description: '', type: 'campaign' as const });
   
   // Member management state
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
@@ -123,50 +122,17 @@ export default function GroupsPage() {
     },
   });
 
-  const updateContactMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Contact> }) => {
-      const res = await fetch(`/api/contacts/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      setIsEditContactModalOpen(false);
-    },
-  });
-
-  const deleteContactMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await fetch(`/api/contacts/${id}`, { method: 'DELETE' });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      queryClient.invalidateQueries({ queryKey: ['groups'] });
-    },
-  });
-
-  const handleContactDelete = (contact: Contact) => {
-    if (confirm(`${contact.fullName} kişisini kalıcı olarak silmek istediğinize emin misiniz?`)) {
-      deleteContactMutation.mutate(contact.id);
-      setIsEditContactModalOpen(false);
-    }
-  };
-
   const openModal = (group: Group | null = null) => {
     if (group) {
       setEditingGroup(group);
       setFormData({ 
         name: group.name, 
         description: group.description,
-        type: 'contact',
-        color: group.color || '#3B82F6'
+        type: 'campaign'
       });
     } else {
       setEditingGroup(null);
-      setFormData({ name: '', description: '', type: 'contact', color: '#3B82F6' });
+      setFormData({ name: '', description: '', type: 'campaign' });
     }
     setIsModalOpen(true);
   };
@@ -174,7 +140,7 @@ export default function GroupsPage() {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingGroup(null);
-    setFormData({ name: '', description: '', type: 'contact', color: '#3B82F6' });
+    setFormData({ name: '', description: '', type: 'campaign' });
   };
 
   const openMemberModal = (group: Group) => {
@@ -188,15 +154,6 @@ export default function GroupsPage() {
     setMemberSearchTerm('');
   };
 
-  const openEditContactModal = (contact: Contact) => {
-    setEditingContact(contact);
-    setContactFormData({ 
-      fullName: contact.fullName, 
-      primaryPhone: contact.primaryPhone || '' 
-    });
-    setIsEditContactModalOpen(true);
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingGroup) {
@@ -206,18 +163,8 @@ export default function GroupsPage() {
     }
   };
 
-  const handleContactSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingContact) {
-      updateContactMutation.mutate({ 
-        id: editingContact.id, 
-        data: contactFormData 
-      });
-    }
-  };
-
   const allGroups: Group[] = groupsData?.items || [];
-  const groups = allGroups.filter(g => !g.type || g.type === 'contact');
+  const groups = allGroups.filter(g => g.type === 'campaign');
   const contacts = contactsData?.items || [];
   
   const filteredContacts = contacts.filter((c: Contact) => 
@@ -225,14 +172,14 @@ export default function GroupsPage() {
     (c.primaryPhone && c.primaryPhone.includes(memberSearchTerm))
   );
 
-  if (groupsLoading) return <div className="p-8 text-center text-gray-500">Gruplar yükleniyor...</div>;
+  if (groupsLoading) return <div className="p-8 text-center text-gray-500">Kampanya grupları yükleniyor...</div>;
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 font-outfit">Rehber Grupları</h1>
-          <p className="text-gray-500 text-xs">Kişi listesi organizasyonu için kategoriler.</p>
+          <h1 className="text-xl font-bold text-gray-900 font-outfit">Kampanya Grupları</h1>
+          <p className="text-gray-500 text-xs">Kampanya gönderimleri için hedef kitle listeleri.</p>
         </div>
         
         <div className="flex items-center gap-2">
@@ -260,7 +207,7 @@ export default function GroupsPage() {
             </button>
           </div>
           <Button onClick={() => openModal()} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm h-9 px-4 text-sm">
-            <Plus size={16} className="mr-1.5" /> Yeni Grup
+            <Plus size={16} className="mr-1.5" /> Yeni Kampanya Grubu
           </Button>
         </div>
       </div>
@@ -269,15 +216,13 @@ export default function GroupsPage() {
       {viewMode === 'board' && (
         <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 min-h-[500px] scrollbar-hide">
           {groups.map((group: Group) => (
-            <div key={group.id} className="flex-none w-72 bg-gray-50/50 border border-border rounded-xl flex flex-col shadow-sm" style={{ borderTop: `4px solid ${group.color || '#3B82F6'}` }}>
+            <div key={group.id} className="flex-none w-72 bg-gray-50/50 border border-border rounded-xl flex flex-col shadow-sm">
               <div className="p-3 border-b border-border bg-white rounded-t-xl flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg text-white" style={{ backgroundColor: group.color || '#3B82F6' }}>
-                    <Users size={16} />
+                  <div className="bg-orange-100 p-1.5 rounded-lg text-orange-600">
+                    <Layers size={16} />
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <h3 className="font-bold text-gray-900 leading-tight truncate max-w-[120px] text-sm">{group.name}</h3>
-                  </div>
+                  <h3 className="font-bold text-gray-900 leading-tight truncate max-w-[120px] text-sm">{group.name}</h3>
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={() => openModal(group)} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-600" title="Grubu Düzenle"><Edit2 size={12} /></button>
@@ -292,7 +237,7 @@ export default function GroupsPage() {
                 </div>
                 {contacts.filter((c: Contact) => c.groupIds?.includes(group.id)).map((contact: Contact) => (
                   <div key={contact.id} className="bg-white p-2 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between group/item">
-                    <div className="flex items-center gap-2 overflow-hidden flex-1 cursor-pointer" onClick={() => openEditContactModal(contact)}>
+                    <div className="flex items-center gap-2 overflow-hidden flex-1">
                       <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 flex-none capitalize">
                         {contact.fullName.charAt(0)}
                       </div>
@@ -302,7 +247,6 @@ export default function GroupsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-all">
-                      <button onClick={() => openEditContactModal(contact)} className="p-1 hover:bg-gray-100 text-gray-400 hover:text-blue-600 rounded"><Edit2 size={10} /></button>
                       <button 
                         onClick={() => toggleMemberMutation.mutate({ contactId: contact.id, isMember: true, groupId: group.id })}
                         className="p-1 hover:bg-red-50 text-red-400 hover:text-red-600 rounded"
@@ -329,7 +273,7 @@ export default function GroupsPage() {
             <div className="bg-gray-50 group-hover:bg-blue-50 p-3 rounded-full mb-2 transition-colors">
               <Plus size={24} />
             </div>
-            <span className="font-bold text-sm">Yeni Grup Ekle</span>
+            <span className="font-bold text-sm">Yeni Kampanya Grubu Ekle</span>
           </button>
         </div>
       )}
@@ -339,8 +283,8 @@ export default function GroupsPage() {
           {groups.map((group: Group) => (
             <div key={group.id} className="bg-white border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all group">
               <div className="flex justify-between items-start mb-3">
-                <div className="p-2 rounded-lg text-white" style={{ backgroundColor: group.color || '#3B82F6' }}>
-                  <Users size={20} />
+                <div className="bg-orange-50 p-2 rounded-lg text-orange-600">
+                  <Layers size={20} />
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => openModal(group)} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"><Edit2 size={14} /></button>
@@ -350,19 +294,6 @@ export default function GroupsPage() {
               <h3 className="text-base font-bold text-gray-900 mb-0.5">{group.name}</h3>
               <p className="text-gray-500 text-xs mb-3 h-8 line-clamp-2">{group.description || 'Açıklama yok.'}</p>
               
-              <div className="flex flex-wrap gap-1 mb-6 max-h-20 overflow-y-auto pr-1">
-                {contacts.filter((c: Contact) => c.groupIds?.includes(group.id)).slice(0, 5).map((contact: Contact) => (
-                  <span key={contact.id} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium cursor-pointer hover:bg-gray-200" onClick={() => openEditContactModal(contact)}>
-                    {contact.fullName}
-                  </span>
-                ))}
-                {group.memberCount > 5 && (
-                  <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold">
-                    +{group.memberCount - 5}
-                  </span>
-                )}
-              </div>
-
               <div className="pt-3 border-t border-gray-50 flex justify-between items-center">
                 <span className="text-xs font-bold text-gray-700">{group.memberCount || 0} Üye</span>
                 <button onClick={() => openMemberModal(group)} className="text-xs font-bold text-blue-600 hover:underline">Yönet</button>
@@ -378,7 +309,7 @@ export default function GroupsPage() {
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-gray-50 border-b border-border">
                 <tr>
-                  <th className="px-6 py-4 font-bold text-gray-900 sticky left-0 bg-gray-50 z-10">Kişi / Gruplar</th>
+                  <th className="px-6 py-4 font-bold text-gray-900 sticky left-0 bg-gray-50 z-10">Kişi / Kampanya Grupları</th>
                   {groups.map((group: Group) => (
                     <th key={group.id} className="px-6 py-4 font-bold text-gray-900 text-center min-w-[120px]">
                       {group.name}
@@ -390,7 +321,7 @@ export default function GroupsPage() {
                 {contacts.filter((c: Contact) => c.groupIds && c.groupIds.some(gid => groups.some(g => g.id === gid))).map((contact: Contact) => (
                   <tr key={contact.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 sticky left-0 bg-white border-r border-gray-100 group-hover:bg-gray-50">
-                      <div className="flex items-center gap-2 cursor-pointer" onClick={() => openEditContactModal(contact)}>
+                      <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
                           {contact.fullName.charAt(0)}
                         </div>
@@ -408,10 +339,9 @@ export default function GroupsPage() {
                             onClick={() => toggleMemberMutation.mutate({ contactId: contact.id, isMember, groupId: group.id })}
                             className={`w-6 h-6 rounded-lg mx-auto flex items-center justify-center transition-all ${
                               isMember 
-                                ? 'text-white shadow-md' 
+                                ? 'bg-orange-600 text-white shadow-md shadow-orange-200' 
                                 : 'bg-gray-100 text-gray-300 hover:bg-gray-200 hover:text-gray-400'
                             }`}
-                            style={isMember ? { backgroundColor: group.color || '#3B82F6', boxShadow: `0 4px 12px ${group.color || '#3B82F6'}33` } : {}}
                           >
                             {isMember ? <Users size={12} /> : <Plus size={12} />}
                           </button>
@@ -432,28 +362,11 @@ export default function GroupsPage() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 border border-gray-100">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h3 className="text-base font-bold text-gray-900">
-                {editingGroup ? 'Grubu Güncelle' : 'Yeni Grup'}
+                {editingGroup ? 'Grubu Güncelle' : 'Yeni Kampanya Grubu'}
               </h3>
               <button onClick={closeModal} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400"><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Grup Rengi</label>
-                <div className="grid grid-cols-8 gap-2">
-                  {[
-                    '#3B82F6', '#10B981', '#EF4444', '#F59E0B', '#8B5CF6', '#EC4899', '#6B7280', '#14B8A6',
-                    '#6366F1', '#D97706', '#84CC16', '#06B6D4', '#F43F5E', '#7C3AED', '#475569', '#78350F'
-                  ].map(c => (
-                    <button 
-                      key={c}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, color: c })}
-                      className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-125 ${formData.color === c ? 'border-gray-900 scale-125 shadow-sm' : 'border-transparent'}`}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
-              </div>
               <div className="space-y-1.5">
                 <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Grup İsmi</label>
                 <input required type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-border rounded-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-sm" />
@@ -492,7 +405,7 @@ export default function GroupsPage() {
               {filteredContacts.map((contact: Contact) => {
                 const isMember = contact.groupIds?.includes(selectedGroup.id);
                 return (
-                  <div key={contact.id} className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${isMember ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-border text-gray-900 hover:border-blue-300'}`}>
+                  <div key={contact.id} className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${isMember ? 'bg-orange-600 text-white border-orange-600' : 'bg-white border-border text-gray-900 hover:border-blue-300'}`}>
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${isMember ? 'bg-white/20' : 'bg-gray-100 text-gray-400'}`}>
                         {contact.fullName.charAt(0)}
@@ -503,12 +416,6 @@ export default function GroupsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                       <button 
-                        onClick={() => openEditContactModal(contact)}
-                        className={`p-1.5 rounded-md transition-all ${isMember ? 'hover:bg-white/20 text-white' : 'hover:bg-gray-100 text-gray-400'}`}
-                      >
-                        <Edit2 size={12} />
-                      </button>
                       <button 
                         onClick={() => toggleMemberMutation.mutate({ contactId: contact.id, isMember, groupId: selectedGroup.id })}
                         className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${isMember ? 'bg-white/20 hover:bg-white/30 truncate' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
@@ -523,70 +430,6 @@ export default function GroupsPage() {
             <div className="p-4 border-t border-gray-100 flex justify-end">
               <Button onClick={closeMemberModal} className="bg-gray-900 text-white px-6 rounded-lg font-bold h-9 text-xs">Kapat</Button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Contact Modal */}
-      {isEditContactModalOpen && editingContact && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <div className="flex items-center gap-2">
-                <User size={16} className="text-blue-600" />
-                <h3 className="text-base font-bold text-gray-900">Kişiyi Düzenle</h3>
-              </div>
-              <button onClick={() => setIsEditContactModalOpen(false)} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400"><X size={18} /></button>
-            </div>
-            <form onSubmit={handleContactSubmit} className="p-6 space-y-4">
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Ad Soyad</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                  <input
-                    required
-                    type="text"
-                    value={contactFormData.fullName}
-                    onChange={(e) => setContactFormData({ ...contactFormData, fullName: e.target.value })}
-                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-border rounded-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all text-sm font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Telefon</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                  <input
-                    type="tel"
-                    value={contactFormData.primaryPhone}
-                    onChange={(e) => setContactFormData({ ...contactFormData, primaryPhone: e.target.value })}
-                    placeholder="905xxxxxxxxx"
-                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-border rounded-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all text-sm font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => handleContactDelete(editingContact)} 
-                  className="flex-none w-10 p-0 rounded-lg h-9 border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200"
-                  title="Kişiyi Sil"
-                >
-                  <Trash2 size={16} />
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setIsEditContactModalOpen(false)} className="flex-1 rounded-lg h-9 text-xs font-bold border-gray-200">Vazgeç</Button>
-                <Button 
-                  type="submit" 
-                  className="flex-1 rounded-lg h-9 bg-blue-600 text-white font-bold text-xs"
-                  disabled={updateContactMutation.isPending}
-                >
-                  {updateContactMutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
-                </Button>
-              </div>
-            </form>
           </div>
         </div>
       )}

@@ -13,8 +13,9 @@ import {
 const navItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Kişiler', href: '/contacts', icon: Users },
-  { label: 'Gruplar', href: '/groups', icon: Users2 },
+  { label: 'Rehber Grupları', href: '/groups', icon: Users2 },
   { label: 'Kampanyalar', href: '/campaigns', icon: Share2 },
+  { label: 'Kampanya Grupları', href: '/campaign-groups', icon: Layers },
   { label: 'Şablonlar', href: '/templates', icon: FolderOpen },
   { label: 'Senkronize', href: '/sync', icon: RefreshCw },
   { label: 'Loglar', href: '/audit', icon: History },

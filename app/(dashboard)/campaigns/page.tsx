@@ -21,6 +21,7 @@ interface Campaign {
 interface Group {
   id: string;
   name: string;
+  type?: 'contact' | 'campaign';
 }
 
 export default function CampaignsPage() {
@@ -34,6 +35,9 @@ export default function CampaignsPage() {
     scheduledAt: '',
     status: 'draft' as Campaign['status']
   });
+
+  const [isGroupCreatorOpen, setIsGroupCreatorOpen] = useState(false);
+  const [newGroupData, setNewGroupData] = useState({ name: '', description: '' });
 
   const { data: campaignsData, isLoading: campaignsLoading } = useQuery({
     queryKey: ['campaigns'],
@@ -149,7 +153,32 @@ export default function CampaignsPage() {
   };
 
   const campaigns = campaignsData?.items || [];
-  const groups = groupsData?.items || [];
+  const allGroups: Group[] = groupsData?.items || [];
+  const campaignGroups = allGroups.filter(g => g.type === 'campaign');
+  const contactGroups = allGroups.filter(g => !g.type || g.type === 'contact');
+
+  const createGroupMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string; type: string }) => {
+      const res = await fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      return res.json();
+    },
+    onSuccess: (newGroup) => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      setFormData(prev => ({ ...prev, groupIds: [...prev.groupIds, newGroup.id] }));
+      setIsGroupCreatorOpen(false);
+      setNewGroupData({ name: '', description: '' });
+    }
+  });
+
+  const handleCreateGroup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGroupData.name.trim()) return;
+    createGroupMutation.mutate({ ...newGroupData, type: 'campaign' });
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -265,23 +294,87 @@ export default function CampaignsPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Hedef Gruplar</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {groups.map((group: Group) => (
-                    <button
-                      key={group.id}
-                      type="button"
-                      onClick={() => handleGroupToggle(group.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                        formData.groupIds.includes(group.id)
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                          : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'
-                      }`}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Hedef Gruplar (Kampanya)</label>
+                  {!isGroupCreatorOpen && (
+                    <button 
+                      type="button" 
+                      onClick={() => setIsGroupCreatorOpen(true)}
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
                     >
-                      {group.name}
+                      <Plus size={12} /> Yeni Grup Oluştur
                     </button>
-                  ))}
+                  )}
+                </div>
+
+                {isGroupCreatorOpen && (
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3 animate-in slide-in-from-top-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase">Kampanya Grubu Oluştur</span>
+                      <button onClick={() => setIsGroupCreatorOpen(false)} className="text-gray-400"><X size={14} /></button>
+                    </div>
+                    <input 
+                      type="text" 
+                      placeholder="Grup Adı" 
+                      className="w-full px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none"
+                      value={newGroupData.name}
+                      onChange={e => setNewGroupData(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                    <textarea 
+                      placeholder="Grup Açıklaması (Opsiyonel)" 
+                      className="w-full px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none resize-none"
+                      value={newGroupData.description}
+                      onChange={e => setNewGroupData(prev => ({ ...prev, description: e.target.value }))}
+                    />
+                    <div className="flex gap-2">
+                      <Button type="button" onClick={() => setIsGroupCreatorOpen(false)} variant="outline" className="flex-1 text-[10px] h-7">Vazgeç</Button>
+                      <Button type="button" onClick={handleCreateGroup} className="flex-1 text-[10px] h-7 bg-blue-600 text-white">Oluştur ve Seç</Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 block mb-2 px-1">ÖZEL KAMPANYA GRUPLARI</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {campaignGroups.map((group: Group) => (
+                        <button
+                          key={group.id}
+                          type="button"
+                          onClick={() => handleGroupToggle(group.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                            formData.groupIds.includes(group.id)
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                              : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'
+                          }`}
+                        >
+                          {group.name}
+                        </button>
+                      ))}
+                      {campaignGroups.length === 0 && <p className="text-[10px] text-gray-300 italic px-1">Henüz özel grup oluşturulmadı.</p>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 block mb-2 px-1 text-gray-400">REHBER / KİŞİ GRUPLARI</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {contactGroups.map((group: Group) => (
+                        <button
+                          key={group.id}
+                          type="button"
+                          onClick={() => handleGroupToggle(group.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                            formData.groupIds.includes(group.id)
+                              ? 'bg-gray-700 text-white border-gray-700'
+                              : 'bg-gray-50 text-gray-400 border-gray-100 hover:border-gray-300'
+                          }`}
+                        >
+                          {group.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 

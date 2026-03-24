@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGoogleOAuthClient } from '@/lib/integrations/google-auth';
 import { GooglePeopleSyncService } from '@/server/integrations/google/people-sync-service';
+import { invalidateContactsCache } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
     try {
       const syncService = new GooglePeopleSyncService();
       const result = await syncService.runFullSync('meoncu@gmail.com', tokens.access_token);
+      invalidateContactsCache();
 
       // Senkronizasyon bittikten sonra ana sayfaya veya sync sayfasına dön
       return NextResponse.redirect(new URL('/sync?status=success&created=' + result.created, request.url));

@@ -1,13 +1,22 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 
 function SyncContent() {
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const status = searchParams.get('status');
   const created = searchParams.get('created');
+
+  useEffect(() => {
+    if (status === 'success') {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+    }
+  }, [status, queryClient]);
 
   const startSync = () => {
     window.location.href = '/api/google/auth';

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, admin } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function GET(
   request: NextRequest,
@@ -7,16 +7,26 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const supabase = getSupabaseAdmin();
     
-    // Fetch contacts that have this groupId in their groupIds array
-    const snapshot = await adminDb.collection('contacts')
-      .where('groupIds', 'array-contains', id)
-      .get();
+    // Fetch contacts that have this groupId in their group_ids array
+    const { data: items, error: dbError } = await supabase
+      .from('contacts')
+      .select('*')
+      .contains('group_ids', [id]);
     
-    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    return NextResponse.json({ items });
+    if (dbError) throw dbError;
+
+    const formattedItems = (items || []).map((item: any) => ({
+      id: item.id,
+      fullName: item.full_name,
+      primaryPhone: item.primary_phone,
+      source: item.source
+    }));
+
+    return NextResponse.json({ items: formattedItems });
   } catch (error) {
-    console.error('Failed to fetch group members:', error);
+    console.error('Failed to fetch group members from Supabase:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -33,29 +43,42 @@ export async function POST(
       return NextResponse.json({ error: 'contactIds must be an array' }, { status: 400 });
     }
 
-    const batch = adminDb.batch();
-    
+    const supabase = getSupabaseAdmin();
+
+    // In a production app, this should be a stored procedure or a batch update
+    // For now, we update each contact to append the new groupId
     for (const contactId of contactIds) {
-      const contactRef = adminDb.collection('contacts').doc(contactId);
-      batch.update(contactRef, {
-        groupIds: admin.firestore.FieldValue.arrayUnion(id)
-      });
+      // 1. Get current groups
+      const { data: contact } = await supabase
+        .from('contacts')
+        .select('group_ids')
+        .eq('id', contactId)
+        .single();
+      
+      const currentGroups = contact?.group_ids || [];
+      if (!currentGroups.includes(id)) {
+        const newGroups = [...currentGroups, id];
+        await supabase
+          .from('contacts')
+          .update({ group_ids: newGroups })
+          .eq('id', contactId);
+      }
     }
 
-    await batch.commit();
-
     // Update group member count
-    const groupRef = adminDb.collection('groups').doc(id);
-    const countSnapshot = await adminDb.collection('contacts')
-      .where('groupIds', 'array-contains', id)
-      .count()
-      .get();
+    const { count } = await supabase
+      .from('contacts')
+      .select('*', { count: 'exact', head: true })
+      .contains('group_ids', [id]);
       
-    await groupRef.update({ memberCount: countSnapshot.data().count });
+    await supabase
+      .from('groups')
+      .update({ member_count: count || 0 })
+      .eq('id', id);
 
-    return NextResponse.json({ success: true, count: countSnapshot.data().count });
+    return NextResponse.json({ success: true, count: count || 0 });
   } catch (error) {
-    console.error('Failed to add members:', error);
+    console.error('Failed to add members in Supabase:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -68,23 +91,37 @@ export async function DELETE(
     const { id } = await params;
     const { contactId } = await request.json();
 
-    const contactRef = adminDb.collection('contacts').doc(contactId);
-    await contactRef.update({
-      groupIds: admin.firestore.FieldValue.arrayRemove(id)
-    });
+    const supabase = getSupabaseAdmin();
+
+    // 1. Get current groups
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('group_ids')
+      .eq('id', contactId)
+      .single();
+    
+    const currentGroups = contact?.group_ids || [];
+    const newGroups = currentGroups.filter((gid: string) => gid !== id);
+
+    await supabase
+      .from('contacts')
+      .update({ group_ids: newGroups })
+      .eq('id', contactId);
 
     // Update group member count
-    const groupRef = adminDb.collection('groups').doc(id);
-    const countSnapshot = await adminDb.collection('contacts')
-      .where('groupIds', 'array-contains', id)
-      .count()
-      .get();
+    const { count } = await supabase
+      .from('contacts')
+      .select('*', { count: 'exact', head: true })
+      .contains('group_ids', [id]);
       
-    await groupRef.update({ memberCount: countSnapshot.data().count });
+    await supabase
+      .from('groups')
+      .update({ member_count: count || 0 })
+      .eq('id', id);
 
-    return NextResponse.json({ success: true, count: countSnapshot.data().count });
+    return NextResponse.json({ success: true, count: count || 0 });
   } catch (error) {
-    console.error('Failed to remove member:', error);
+    console.error('Failed to remove member in Supabase:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

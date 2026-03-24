@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+import { getAppSettings } from '@/lib/firebase/settings';
+import { getLocalTimestamp, getUtcTimestamp } from '@/lib/utils/time';
 
 export async function GET() {
   try {
-    const now = new Date().toISOString();
+    const settings = await getAppSettings();
+    const now = getUtcTimestamp();
+    const localNow = await getLocalTimestamp();
     
     // Find scheduled campaigns that are due
     const snapshot = await adminDb.collection('campaigns')
@@ -42,14 +46,22 @@ export async function GET() {
         id: doc.id,
         name: data.name,
         message: data.message,
-        contacts
+        contacts,
+        processedAtLocal: localNow
       });
 
       // Update status to 'processing' so it's not picked up again immediately
-      await doc.ref.update({ status: 'processing', updatedAt: now });
+      await doc.ref.update({ 
+        status: 'processing', 
+        updatedAt: now 
+      });
     }
 
-    return NextResponse.json({ items: campaigns });
+    return NextResponse.json({ 
+      items: campaigns,
+      processedAt: now,
+      timezone: settings.timezone
+    });
   } catch (error: any) {
     console.error('Failed to process campaigns:', error);
     return NextResponse.json({ 

@@ -45,6 +45,8 @@ export default function ContactsPage() {
       const res = await fetch('/api/groups');
       return res.json();
     },
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    gcTime: 30 * 60 * 1000,    // 30 minutes
   });
 
   const groups: Group[] = (groupsData?.items || []).filter((g: any) => !g.type || g.type === 'contact');
@@ -56,6 +58,8 @@ export default function ContactsPage() {
       if (!res.ok) throw new Error('Network response was not ok');
       return res.json();
     },
+    staleTime: 5 * 60 * 1000, // Keep data fresh for 5 minutes (saves Firestore reads)
+    gcTime: 10 * 60 * 1000,   // Keep in cache for 10 minutes even if inactive
   });
 
   const updateContactMutation = useMutation({

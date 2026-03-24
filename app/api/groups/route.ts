@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+import { getCachedGroups, setCachedGroups, invalidateGroupsCache } from '@/lib/cache';
 import fs from 'fs';
 import path from 'path';
 
@@ -12,11 +13,18 @@ if (!fs.existsSync(BACKUP_DIR)) {
 
 export async function GET() {
   try {
+    // 1. Memory Cache check
+    const cached = getCachedGroups();
+    if (cached) return NextResponse.json({ items: cached, fromCache: true });
+
     try {
       const snapshot = await adminDb.collection('groups').get();
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      // Update backup
+      // Update memory cache
+      setCachedGroups(items);
+      
+      // Update file backup
       fs.writeFileSync(BACKUP_FILE, JSON.stringify(items, null, 2));
 
       return NextResponse.json({ items });
@@ -63,6 +71,8 @@ export async function POST(request: NextRequest) {
       color: color || '#3B82F6', // Default blue-600
       memberCount: 0
     };
+
+    invalidateGroupsCache();
 
     return NextResponse.json(newGroup);
   } catch (error) {

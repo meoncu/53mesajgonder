@@ -50,16 +50,17 @@ export async function POST(request: NextRequest) {
     const { fullName, primaryPhone, notes, groupIds, tags } = body;
 
     const supabase = getSupabaseAdmin();
-    
+
     const dbContact = {
       full_name: fullName,
-      primary_phone: primaryPhone,
-      normalized_primary_phone: primaryPhone?.replace(/[^0-9]/g, ''),
+      primary_phone: primaryPhone || null,
+      normalized_primary_phone: primaryPhone ? primaryPhone.replace(/[^0-9]/g, '') : null,
       notes: notes || '',
       group_ids: groupIds || [],
       tags: tags || [],
       source: 'manual',
       is_active: true,
+      owner_user_id: 'meoncu@gmail.com',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -70,11 +71,14 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error(error);
+      return NextResponse.json({ error: error.message, details: error }, { status: 400 });
+    }
 
     return NextResponse.json({ success: true, item: data });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create contact in Supabase:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
 }

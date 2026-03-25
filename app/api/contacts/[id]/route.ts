@@ -30,7 +30,10 @@ export async function PATCH(
       .select()
       .single();
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      console.error(dbError);
+      return NextResponse.json({ error: dbError.message, details: dbError }, { status: 400 });
+    }
 
     // Optional: Recalculate member counts for affected groups
     if (groupIds !== undefined) {
@@ -49,9 +52,9 @@ export async function PATCH(
     }
 
     return NextResponse.json({ success: true, item: data });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to update contact in Supabase:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -75,7 +78,10 @@ export async function DELETE(
       .delete()
       .eq('id', id);
 
-    if (deleteError) throw deleteError;
+    if (deleteError) {
+      console.error(deleteError);
+      return NextResponse.json({ error: deleteError.message, details: deleteError }, { status: 400 });
+    }
 
     // Recalculate counts for groups this contact was in
     if (contactData?.group_ids?.length) {
@@ -93,8 +99,8 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to delete contact from Supabase:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
 }

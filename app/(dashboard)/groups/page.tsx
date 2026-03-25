@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { 
@@ -27,6 +27,23 @@ interface Contact {
 export default function GroupsPage() {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<'cards' | 'board' | 'matrix'>('board');
+  
+  // Scroll refs
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+
+  // Sync scroll function
+  const onTopScroll = () => {
+    if (topScrollRef.current && mainScrollRef.current) {
+      mainScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+  };
+
+  const onMainScroll = () => {
+    if (topScrollRef.current && mainScrollRef.current) {
+      topScrollRef.current.scrollLeft = mainScrollRef.current.scrollLeft;
+    }
+  };
   
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -63,6 +80,15 @@ export default function GroupsPage() {
       return res.json();
     }
   });
+
+  const allGroups: Group[] = groupsData?.items || [];
+  const groups = allGroups.filter(g => !g.type || g.type === 'contact');
+  const contacts = contactsData?.items || [];
+  
+  const filteredContacts = contacts.filter((c: Contact) => 
+    c.fullName.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
+    (c.primaryPhone && c.primaryPhone.includes(memberSearchTerm))
+  );
 
   const createMutation = useMutation({
     mutationFn: async (newGroup: typeof formData) => {
@@ -216,15 +242,6 @@ export default function GroupsPage() {
     }
   };
 
-  const allGroups: Group[] = groupsData?.items || [];
-  const groups = allGroups.filter(g => !g.type || g.type === 'contact');
-  const contacts = contactsData?.items || [];
-  
-  const filteredContacts = contacts.filter((c: Contact) => 
-    c.fullName.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
-    (c.primaryPhone && c.primaryPhone.includes(memberSearchTerm))
-  );
-
   if (groupsLoading) return <div className="p-8 text-center text-gray-500">Gruplar yükleniyor...</div>;
 
   return (
@@ -259,34 +276,49 @@ export default function GroupsPage() {
               <List size={16} />
             </button>
           </div>
-          <Button onClick={() => openModal()} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm h-9 px-4 text-sm">
+          <Button onClick={() => openModal()} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm h-9 px-4 text-sm font-bold">
             <Plus size={16} className="mr-1.5" /> Yeni Grup
           </Button>
         </div>
       </div>
 
+      {/* Top Scroll Helper for Board View */}
+      {viewMode === 'board' && (
+        <div 
+          ref={topScrollRef}
+          onScroll={onTopScroll}
+          className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent h-4 mb-[-12px] opacity-0 hover:opacity-100 transition-opacity"
+        >
+          <div style={{ width: `${(groups.length + 1) * 304}px` }} className="h-1" />
+        </div>
+      )}
+
       {/* View Modes */}
       {viewMode === 'board' && (
-        <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 min-h-[500px] scrollbar-hide">
+        <div 
+          ref={mainScrollRef}
+          onScroll={onMainScroll}
+          className="flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 min-h-[550px] scrollbar-hide md:scrollbar-default"
+        >
           {groups.map((group: Group) => (
             <div key={group.id} className="flex-none w-72 bg-gray-50/50 border border-border rounded-xl flex flex-col shadow-sm" style={{ borderTop: `4px solid ${group.color || '#3B82F6'}` }}>
               <div className="p-3 border-b border-border bg-white rounded-t-xl flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg text-white" style={{ backgroundColor: group.color || '#3B82F6' }}>
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <div className="p-1.5 rounded-lg text-white flex-none" style={{ backgroundColor: group.color || '#3B82F6' }}>
                     <Users size={16} />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <h3 className="font-bold text-gray-900 leading-tight truncate max-w-[120px] text-sm">{group.name}</h3>
+                    <h3 className="font-bold text-gray-900 leading-tight truncate text-sm">{group.name}</h3>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-none ml-2">
                   <button onClick={() => openModal(group)} className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-600" title="Grubu Düzenle"><Edit2 size={12} /></button>
                   <button onClick={() => { if(confirm(`${group.name} grubunu silmek istediğinize emin misiniz?`)) deleteMutation.mutate(group.id) }} className="p-1 hover:bg-red-50 text-red-400 rounded" title="Grubu Sil"><Trash2 size={12} /></button>
                   <button onClick={() => openMemberModal(group)} className="p-1 hover:bg-blue-600 hover:text-white rounded text-blue-600 transition-colors" title="Üye Ekle"><Plus size={12} /></button>
                 </div>
               </div>
               
-              <div className="flex-1 p-3 space-y-2 overflow-y-auto">
+              <div className="flex-1 p-3 space-y-2 overflow-y-auto max-h-[500px] custom-scrollbar">
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-2 flex justify-between">
                   <span>Üyeler ({group.memberCount || 0})</span>
                 </div>
@@ -297,8 +329,8 @@ export default function GroupsPage() {
                         {contact.fullName.charAt(0)}
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium text-gray-700 truncate">{contact.fullName}</span>
-                        <span className="text-[10px] text-gray-400 truncate">{contact.primaryPhone}</span>
+                        <span className="text-xs font-semibold text-gray-700 truncate">{contact.fullName}</span>
+                        <span className="text-[9px] text-gray-400 truncate">{contact.primaryPhone}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-all">
@@ -324,12 +356,12 @@ export default function GroupsPage() {
           
           <button 
             onClick={() => openModal()}
-            className="flex-none w-72 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50/10 transition-all group"
+            className="flex-none w-72 h-[120px] border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50/10 transition-all group"
           >
-            <div className="bg-gray-50 group-hover:bg-blue-50 p-3 rounded-full mb-2 transition-colors">
-              <Plus size={24} />
+            <div className="bg-gray-50 group-hover:bg-blue-50 p-2 rounded-full mb-1 transition-colors">
+              <Plus size={20} />
             </div>
-            <span className="font-bold text-sm">Yeni Grup Ekle</span>
+            <span className="font-bold text-[11px] uppercase tracking-wider">Yeni Grup Ekle</span>
           </button>
         </div>
       )}
@@ -350,7 +382,7 @@ export default function GroupsPage() {
               <h3 className="text-base font-bold text-gray-900 mb-0.5">{group.name}</h3>
               <p className="text-gray-500 text-xs mb-3 h-8 line-clamp-2">{group.description || 'Açıklama yok.'}</p>
               
-              <div className="flex flex-wrap gap-1 mb-6 max-h-20 overflow-y-auto pr-1">
+              <div className="flex flex-wrap gap-1 mb-6 max-h-20 overflow-y-auto pr-1 custom-scrollbar">
                 {contacts.filter((c: Contact) => c.groupIds?.includes(group.id)).slice(0, 5).map((contact: Contact) => (
                   <span key={contact.id} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium cursor-pointer hover:bg-gray-200" onClick={() => openEditContactModal(contact)}>
                     {contact.fullName}
@@ -488,7 +520,7 @@ export default function GroupsPage() {
                 <input type="text" placeholder="Ara..." value={memberSearchTerm} onChange={(e) => setMemberSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-gray-100 border-none rounded-lg focus:ring-2 focus:ring-blue-600 outline-none transition-all text-sm font-medium" />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-1.5 bg-gray-50/50">
+            <div className="flex-1 overflow-y-auto p-3 space-y-1.5 bg-gray-50/50 custom-scrollbar">
               {filteredContacts.map((contact: Contact) => {
                 const isMember = contact.groupIds?.includes(selectedGroup.id);
                 return (
@@ -590,6 +622,12 @@ export default function GroupsPage() {
           </div>
         </div>
       )}
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 12px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+      `}</style>
     </div>
   );
 }

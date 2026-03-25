@@ -32,6 +32,7 @@ export default function ContactsPage() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [sortConfig, setSortConfig] = useState<{ key: keyof Contact; direction: 'asc' | 'desc' } | null>({ key: 'fullName', direction: 'asc' });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showOnlyDuplicates, setShowOnlyDuplicates] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -87,13 +88,19 @@ export default function ContactsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error('Kayıt başarısız');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Kayıt başarısız');
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       closeEditModal();
     },
+    onError: (error) => {
+      alert(`Hata: ${error.message}`);
+    }
   });
 
   const updateContactMutation = useMutation({
@@ -103,13 +110,19 @@ export default function ContactsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error('Güncelleme başarısız');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Güncelleme başarısız');
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       closeEditModal();
     },
+    onError: (error) => {
+      alert(`Hata: ${error.message}`);
+    }
   });
 
   const deleteContactMutation = useMutation({
@@ -172,11 +185,14 @@ export default function ContactsPage() {
     return 0;
   });
 
-  const filteredContacts = sortedContacts.filter((c: Contact) =>
-    c.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredContacts = sortedContacts.filter((c: Contact) => {
+    if (showOnlyDuplicates && (!c.primaryPhone || !duplicateNumbers.has(c.primaryPhone))) {
+      return false;
+    }
+    return c.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (c.primaryPhone && c.primaryPhone.includes(searchTerm)) ||
-    (c.notes && c.notes.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+    (c.notes && c.notes.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
 
   const toggleSelectAll = () => {
     if (selectedIds.length === filteredContacts.length) {
@@ -263,13 +279,19 @@ export default function ContactsPage() {
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-3xl font-black text-gray-900 font-outfit tracking-tighter">Rehber</h1>
             {duplicateNumbers.size > 0 && (
-              <div 
-                className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-100 flex items-center gap-1.5 animate-pulse"
-                title={`${duplicateNumbers.size} farklı numara mükerrer kaydedilmiş.`}
+              <button 
+                onClick={() => setShowOnlyDuplicates(!showOnlyDuplicates)}
+                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-1.5 transition-all
+                  ${showOnlyDuplicates 
+                    ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-200' 
+                    : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100 animate-pulse hover:animate-none'
+                  }`}
+                title={showOnlyDuplicates ? 'Tüm listeyi göster' : `${duplicateNumbers.size} farklı numara mükerrer kaydedilmiş. Tıklayarak listele.`}
               >
                 <AlertTriangle size={10} />
                 {duplicateNumbers.size} Mükerrer Kayıt
-              </div>
+                {showOnlyDuplicates && <X size={10} className="ml-1" />}
+              </button>
             )}
           </div>
           <p className="text-gray-500 text-[11px] font-bold font-outfit uppercase tracking-widest opacity-60">Kontaklarınızı yönetin ve gruplandırın.</p>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { assertServiceAuth } from '@/server/middleware/service-auth';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -10,14 +10,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = await req.json().catch(() => ({}));
   
   try {
-    await adminDb.collection('campaigns').doc(id).update({
-      status: 'failed',
-      lastError: body?.reason ?? 'Unknown n8n error',
-      updatedAt: new Date().toISOString()
-    });
+    const supabase = getSupabaseAdmin();
+    const { error: dbError } = await supabase
+      .from('campaigns')
+      .update({
+        status: 'failed',
+        last_error: body?.reason ?? 'Unknown n8n error',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (dbError) throw dbError;
+
     return NextResponse.json({ campaignId: id, status: 'failed', reason: body?.reason ?? null });
-  } catch (error) {
-    console.error('Failed to fail campaign:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Failed to fail campaign in Supabase:', error);
+    return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
 }

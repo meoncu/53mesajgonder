@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { assertServiceAuth } from '@/server/middleware/service-auth';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,13 +9,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   
   try {
-    await adminDb.collection('campaigns').doc(id).update({
-      status: 'completed',
-      updatedAt: new Date().toISOString()
-    });
+    const supabase = getSupabaseAdmin();
+    const { error: dbError } = await supabase
+      .from('campaigns')
+      .update({
+        status: 'completed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (dbError) throw dbError;
+
     return NextResponse.json({ campaignId: id, status: 'completed' });
-  } catch (error) {
-    console.error('Failed to complete campaign:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Failed to complete campaign in Supabase:', error);
+    return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
 }

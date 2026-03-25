@@ -18,8 +18,16 @@ export async function PATCH(
     };
     
     if (notes !== undefined) updateData.notes = notes;
-    if (fullName !== undefined) updateData.full_name = fullName;
-    if (primaryPhone !== undefined) updateData.primary_phone = primaryPhone;
+    if (fullName !== undefined) {
+      updateData.full_name = fullName;
+      const names = (fullName || '').trim().split(' ');
+      updateData.first_name = names[0] || '';
+      updateData.last_name = names.slice(1).join(' ') || '';
+    }
+    if (primaryPhone !== undefined) {
+      updateData.primary_phone = primaryPhone;
+      updateData.normalized_primary_phone = primaryPhone ? primaryPhone.replace(/[^0-9]/g, '') : null;
+    }
     if (tags !== undefined) updateData.tags = tags;
     if (groupIds !== undefined) updateData.group_ids = groupIds;
 

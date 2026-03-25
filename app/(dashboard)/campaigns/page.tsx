@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { 
   Plus, Trash2, Send, Calendar, Clock, 
-  MessageSquare, Users, CheckCircle2, AlertCircle, X, ExternalLink, Pencil
+  MessageSquare, Users, CheckCircle2, AlertCircle, X, Pencil
 } from 'lucide-react';
 
 interface Campaign {
@@ -36,13 +36,11 @@ export default function CampaignsPage() {
     status: 'draft' as Campaign['status']
   });
 
-  const [isGroupCreatorOpen, setIsGroupCreatorOpen] = useState(false);
-  const [newGroupData, setNewGroupData] = useState({ name: '', description: '' });
-
   const { data: campaignsData, isLoading: campaignsLoading } = useQuery({
     queryKey: ['campaigns'],
     queryFn: async () => {
       const res = await fetch('/api/campaigns');
+      if (!res.ok) throw new Error('Yüklenemedi');
       return res.json();
     },
   });
@@ -52,11 +50,11 @@ export default function CampaignsPage() {
     queryFn: async () => {
       const res = await fetch('/api/groups');
       return res.json();
-    },
+    }
   });
 
   const createMutation = useMutation({
-    mutationFn: async (newCampaign: typeof formData) => {
+    mutationFn: async (newCampaign: any) => {
       const res = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,7 +71,7 @@ export default function CampaignsPage() {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       closeModal();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       alert(`Lütfen formu kontrol edin: ${error.message}`);
     }
   });
@@ -88,7 +86,7 @@ export default function CampaignsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const res = await fetch(`/api/campaigns/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -133,7 +131,6 @@ export default function CampaignsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Auto-calculate status based on scheduledAt if it's currently draft/scheduled
     let finalStatus = formData.status;
     if (formData.status === 'draft' || formData.status === 'scheduled') {
       finalStatus = formData.scheduledAt ? 'scheduled' : 'draft';
@@ -146,277 +143,216 @@ export default function CampaignsPage() {
     };
     
     if (editingCampaignId) {
-      updateMutation.mutate({ id: editingCampaignId, data: payload as any });
+      updateMutation.mutate({ id: editingCampaignId, data: payload });
     } else {
-      createMutation.mutate(payload as any);
+      createMutation.mutate(payload);
     }
   };
 
-  const campaigns = campaignsData?.items || [];
+  const campaigns: Campaign[] = campaignsData?.items || [];
   const allGroups: Group[] = groupsData?.items || [];
   const campaignGroups = allGroups.filter(g => g.type === 'campaign');
   const contactGroups = allGroups.filter(g => !g.type || g.type === 'contact');
 
   const createGroupMutation = useMutation({
-    mutationFn: async (data: { name: string; description: string; type: string }) => {
+    mutationFn: async (newName: string) => {
       const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ name: newName, type: 'campaign' }),
       });
       return res.json();
     },
-    onSuccess: (newGroup) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
-      setFormData(prev => ({ ...prev, groupIds: [...prev.groupIds, newGroup.id] }));
-      setIsGroupCreatorOpen(false);
-      setNewGroupData({ name: '', description: '' });
-    }
+    },
   });
 
-  const handleCreateGroup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGroupData.name.trim()) return;
-    createGroupMutation.mutate({ ...newGroupData, type: 'campaign' });
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'scheduled': return <span className="bg-blue-50 text-blue-600 border border-blue-100 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1"><Clock size={12}/> Zamanlandı</span>;
-      case 'completed': return <span className="bg-green-50 text-green-600 border border-green-100 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1"><CheckCircle2 size={12}/> Tamamlandı</span>;
-      case 'processing': return <span className="bg-yellow-50 text-yellow-600 border border-yellow-100 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 animate-pulse"><Calendar size={12}/> Gönderiliyor</span>;
-      case 'failed': return <span className="bg-red-50 text-red-600 border border-red-100 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1"><AlertCircle size={12}/> Hata</span>;
-      default: return <span className="bg-gray-50 text-gray-500 border border-gray-200 px-2 py-1 rounded-lg text-xs font-bold">Taslak</span>;
-    }
+  const handleCreateGroup = () => {
+    const name = prompt('Yeni kampanya grubu ismi:');
+    if (name) createGroupMutation.mutate(name);
   };
 
   if (campaignsLoading) return <div className="p-8 text-center text-gray-500">Kampanyalar yükleniyor...</div>;
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900 font-outfit">Kampanyalar</h1>
-          <p className="text-gray-500 text-xs">Grup bazlı toplu mesaj gönderimlerinizi planlayın.</p>
+          <p className="text-gray-500 text-xs text-center md:text-left">Mesaj gönderimlerinizi yönetin.</p>
         </div>
-        <Button onClick={openModal} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm flex items-center gap-1.5 px-4 h-9 text-sm">
-          <Send size={16} /> Yeni Kampanya Başlat
+        <Button onClick={openModal} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm h-9 px-4 text-sm font-bold">
+          <Plus size={16} className="mr-1.5" /> Yeni Kampanya
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
-        {campaigns.map((campaign: Campaign) => (
-          <div key={campaign.id} className="bg-white border border-border rounded-xl p-4 hover:shadow-md transition-all flex flex-col md:flex-row items-start md:items-center gap-4 group">
-            <div className="bg-blue-50 p-3 rounded-xl text-blue-600 flex-none group-hover:bg-blue-600 group-hover:text-white transition-colors">
-              <MessageSquare size={20} />
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-gray-900 text-base truncate">{campaign.name}</h3>
-                {getStatusBadge(campaign.status)}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {campaigns.map((campaign) => (
+          <div key={campaign.id} className="bg-white border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all group flex flex-col">
+            <div className="flex justify-between items-start mb-3">
+              <div className={`p-2 rounded-lg ${
+                campaign.status === 'completed' ? 'bg-green-50 text-green-600' :
+                campaign.status === 'failed' ? 'bg-red-50 text-red-600' :
+                campaign.status === 'processing' ? 'bg-blue-50 text-blue-600 animate-pulse' :
+                'bg-gray-50 text-gray-400'
+              }`}>
+                {campaign.status === 'completed' ? <CheckCircle2 size={18} /> :
+                 campaign.status === 'failed' ? <AlertCircle size={18} /> :
+                 <Clock size={18} />}
               </div>
-              <p className="text-gray-500 text-xs line-clamp-1 italic">&quot;{campaign.message}&quot;</p>
-              <div className="flex items-center gap-4 pt-2">
-                <div className="flex items-center gap-1 text-xs font-medium text-gray-400">
-                  <Users size={14} />
-                  {campaign.groupIds.length} Grup Hedeflendi
-                </div>
-                {campaign.scheduledAt && (
-                  <div className="flex items-center gap-1 text-xs font-medium text-gray-400">
-                    <Calendar size={14} />
-                    {new Date(campaign.scheduledAt).toLocaleString('tr-TR')}
-                  </div>
-                )}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => handleEdit(campaign)} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400"><Pencil size={14} /></button>
+                <button onClick={() => { if(confirm('Sil?')) deleteMutation.mutate(campaign.id) }} className="p-1.5 hover:bg-red-50 rounded-md text-red-500"><Trash2 size={14} /></button>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 flex-none ml-auto">
-              {(campaign.status === 'draft' || campaign.status === 'scheduled') && (
-                <button 
-                  onClick={() => handleEdit(campaign)} 
-                  className="p-2 hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded-lg transition-all"
-                  title="Düzenle"
-                >
-                  <Pencil size={16} />
-                </button>
+            <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{campaign.name}</h3>
+            <p className="text-[11px] text-gray-500 line-clamp-2 mb-4 h-8 flex-1">{campaign.message}</p>
+            
+            <div className="space-y-2 pt-3 border-t border-gray-50">
+              <div className="flex items-center justify-between text-[10px] font-bold">
+                <span className="text-gray-400 uppercase tracking-wider">Durum</span>
+                <span className={`px-2 py-0.5 rounded-full capitalize ${
+                  campaign.status === 'completed' ? 'bg-green-100 text-green-700' :
+                  campaign.status === 'failed' ? 'bg-red-100 text-red-700' :
+                  campaign.status === 'processing' ? 'bg-blue-100 text-blue-700' :
+                  campaign.status === 'scheduled' ? 'bg-amber-100 text-amber-700' :
+                  'bg-gray-100 text-gray-600'
+                }`}>{campaign.status === 'completed' ? 'Tamamlandı' : 
+                   campaign.status === 'failed' ? 'Hata' : 
+                   campaign.status === 'processing' ? 'Gönderiliyor' : 
+                   campaign.status === 'scheduled' ? 'Planlandı' : 'Taslak'}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-bold">
+                <span className="text-gray-400 uppercase tracking-wider">Hedef</span>
+                <span className="text-gray-700">{campaign.groupIds.map(id => {
+                  const g = allGroups.find(g => g.id === id);
+                  return g ? g.name : '';
+                }).filter(Boolean).join(', ') || 'Grup Seçilmedi'}</span>
+              </div>
+              {campaign.scheduledAt && (
+                <div className="flex items-center justify-between text-[10px] font-bold">
+                  <span className="text-gray-400 uppercase tracking-wider">Plano</span>
+                  <span className="text-gray-700">{new Date(campaign.scheduledAt).toLocaleString('tr-TR')}</span>
+                </div>
               )}
-              <button 
-                onClick={() => { if(confirm('Silsin mi?')) deleteMutation.mutate(campaign.id) }} 
-                className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-lg transition-all"
-                title="Sil"
-              >
-                <Trash2 size={16} />
-              </button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleEdit(campaign)}
-                className="h-8 rounded-lg border-gray-200 hover:border-blue-600 hover:text-blue-600 font-bold text-xs"
-              >
-                {campaign.status === 'draft' || campaign.status === 'scheduled' ? 'Düzenle' : 'Detaylar'}
-              </Button>
             </div>
           </div>
         ))}
-
         {campaigns.length === 0 && (
-          <div className="py-24 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl text-center">
-            <MessageSquare className="mx-auto text-gray-200 mb-6" size={64} />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Henüz kampanya oluşturulmadı</h3>
-            <p className="text-gray-500 mb-8 max-w-sm mx-auto">Gruplarınıza toplu mesaj göndermek için ilk kampanyanızı şimdi başlatın.</p>
-            <Button onClick={openModal} className="bg-blue-600 text-white rounded-lg h-10 px-6 font-bold">
-              Yeni Kampanya Oluştur
-            </Button>
+          <div className="col-span-full py-20 bg-white border border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-400">
+            <MessageSquare size={48} strokeWidth={1} className="mb-4 opacity-20" />
+            <p className="text-sm font-medium">Henüz bir kampanya oluşturulmamış.</p>
           </div>
         )}
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-gray-100">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h3 className="text-base font-bold text-gray-900">
-                {editingCampaignId ? 'Kampanyayı Düzenle' : 'Yeni Kampanya Planla'}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col transform transition-all animate-in zoom-in-95 duration-200 border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+              <h3 className="text-lg font-bold text-gray-900 font-outfit">
+                {editingCampaignId ? 'Kampanyayı Güncelle' : 'Yeni Kampanya Oluştur'}
               </h3>
-              <button onClick={closeModal} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400"><X size={18} /></button>
+              <button onClick={closeModal} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 transition-colors"><X size={20} /></button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Kampanya Adı</label>
-                <input 
-                  required
-                  type="text" 
-                  placeholder="Örn: Ramazan Bayramı Tebrik Mesajı"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-4 py-2 bg-gray-50 border border-border rounded-lg outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all font-medium text-sm"
-                />
-              </div>
-
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Hedef Gruplar (Kampanya)</label>
-                  {!isGroupCreatorOpen && (
-                    <button 
-                      type="button" 
-                      onClick={() => setIsGroupCreatorOpen(true)}
-                      className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                    >
-                      <Plus size={12} /> Yeni Grup Oluştur
-                    </button>
-                  )}
-                </div>
-
-                {isGroupCreatorOpen && (
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3 animate-in slide-in-from-top-2">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-bold text-gray-500 uppercase">Kampanya Grubu Oluştur</span>
-                      <button onClick={() => setIsGroupCreatorOpen(false)} className="text-gray-400"><X size={14} /></button>
-                    </div>
-                    <input 
-                      type="text" 
-                      placeholder="Grup Adı" 
-                      className="w-full px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none"
-                      value={newGroupData.name}
-                      onChange={e => setNewGroupData(prev => ({ ...prev, name: e.target.value }))}
-                    />
-                    <textarea 
-                      placeholder="Grup Açıklaması (Opsiyonel)" 
-                      className="w-full px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none resize-none"
-                      value={newGroupData.description}
-                      onChange={e => setNewGroupData(prev => ({ ...prev, description: e.target.value }))}
-                    />
-                    <div className="flex gap-2">
-                      <Button type="button" onClick={() => setIsGroupCreatorOpen(false)} variant="outline" className="flex-1 text-[10px] h-7">Vazgeç</Button>
-                      <Button type="button" onClick={handleCreateGroup} className="flex-1 text-[10px] h-7 bg-blue-600 text-white">Oluştur ve Seç</Button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <div>
-                    <span className="text-[10px] font-bold text-gray-400 block mb-2 px-1">ÖZEL KAMPANYA GRUPLARI</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {campaignGroups.map((group: Group) => (
-                        <button
-                          key={group.id}
-                          type="button"
-                          onClick={() => handleGroupToggle(group.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                            formData.groupIds.includes(group.id)
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                              : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'
-                          }`}
-                        >
-                          {group.name}
-                        </button>
-                      ))}
-                      {campaignGroups.length === 0 && <p className="text-[10px] text-gray-300 italic px-1">Henüz özel grup oluşturulmadı.</p>}
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-bold text-gray-400 block mb-2 px-1 text-gray-400">REHBER / KİŞİ GRUPLARI</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {contactGroups.map((group: Group) => (
-                        <button
-                          key={group.id}
-                          type="button"
-                          onClick={() => handleGroupToggle(group.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                            formData.groupIds.includes(group.id)
-                              ? 'bg-gray-700 text-white border-gray-700'
-                              : 'bg-gray-50 text-gray-400 border-gray-100 hover:border-gray-300'
-                          }`}
-                        >
-                          {group.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mesaj İçeriği</label>
-                <textarea 
-                  required
-                  rows={4}
-                  value={formData.message}
-                  onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                  placeholder="Gönderilecek mesajı buraya yazın..."
-                  className="w-full px-4 py-3 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition-all resize-none text-sm"
-                />
-                <p className="text-[10px] text-gray-400 font-medium">İpucu: Kişiye özel mesaj için [isim] etiketi eklenebilir.</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Yayınlanma Tarihi (Opsiyonel)</label>
-                <div className="relative">
-                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                  <input 
-                    type="datetime-local" 
-                    value={formData.scheduledAt}
-                    onChange={(e) => setFormData(prev => ({ ...prev, scheduledAt: e.target.value }))}
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-sm"
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Kampanya Başlığı</label>
+                  <input
+                    required
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-sm"
+                    placeholder="Örn: Ramazan Bayramı Mesajı"
                   />
                 </div>
-              </div>
 
-              <div className="flex gap-3 pt-2 sticky bottom-0 bg-white">
-                <Button type="button" variant="outline" onClick={closeModal} className="flex-1 h-9 rounded-lg border-gray-200 font-bold text-xs uppercase tracking-tight">İptal</Button>
-                <Button 
-                  type="submit" 
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="flex-1 h-9 rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all font-bold text-xs uppercase tracking-tight"
-                >
-                  {createMutation.isPending || updateMutation.isPending
-                    ? 'Kaydediliyor...' 
-                    : editingCampaignId ? 'Değişiklikleri Kaydet' : 'Kampanyayı Kaydet'}
-                </Button>
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mesaj İçeriği</label>
+                  <textarea
+                    required
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    rows={4}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none font-medium text-sm"
+                    placeholder="Göndermek istediğiniz mesaj..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Hedef Gruplar</label>
+                    <button type="button" onClick={handleCreateGroup} className="text-[10px] font-bold text-blue-600 hover:underline">+ Yeni Grup</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-xl border border-border">
+                    {[...contactGroups, ...campaignGroups].map((group) => {
+                      const isSelected = formData.groupIds.includes(group.id);
+                      return (
+                        <div
+                          key={group.id}
+                          onClick={() => handleGroupToggle(group.id)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all border ${
+                            isSelected 
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
+                              : 'bg-white text-gray-600 border-gray-100 hover:border-blue-200'
+                          }`}
+                        >
+                          <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isSelected ? 'bg-white border-white' : 'border-gray-200 bg-gray-50'}`}>
+                            {isSelected && <div className="w-1.5 h-1.5 bg-blue-600 rounded-sm" />}
+                          </div>
+                          <span className="text-[11px] font-bold truncate">{group.name}</span>
+                        </div>
+                      );
+                    })}
+                    {[...contactGroups, ...campaignGroups].length === 0 && (
+                      <p className="col-span-full text-[10px] text-gray-400 italic text-center py-2">Grup bulunamadı.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Gönderim Zamanı</label>
+                    <input
+                      type="datetime-local"
+                      value={formData.scheduledAt}
+                      onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Durum</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_0.5rem_center] bg-no-repeat"
+                    >
+                      <option value="draft">Taslak</option>
+                      <option value="scheduled">Planlandı</option>
+                      <option value="processing">Gönderiliyor</option>
+                      <option value="completed">Tamamlandı</option>
+                      <option value="failed">Hata</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </form>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3 bg-gray-50/50">
+              <Button type="button" variant="outline" onClick={closeModal} className="flex-1 rounded-xl h-10 font-bold text-xs">Vazgeç</Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 font-bold text-xs shadow-lg shadow-blue-100"
+              >
+                {createMutation.isPending || updateMutation.isPending ? 'Kaydediliyor...' : editingCampaignId ? 'Güncelle' : 'Oluştur'}
+              </Button>
+            </div>
           </div>
         </div>
       )}

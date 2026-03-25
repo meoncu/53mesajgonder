@@ -61,7 +61,7 @@ export default function ContactsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const contacts = data?.items || [];
+  const contacts = useMemo(() => data?.items || [] as Contact[], [data]);
 
   // DUPLICATE DETECTION LOGIC
   const duplicateNumbers = useMemo(() => {

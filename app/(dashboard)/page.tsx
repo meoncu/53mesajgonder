@@ -7,6 +7,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
+interface Campaign {
+  id: string;
+  name: string;
+  status: string;
+}
+
 export default function DashboardPage() {
   const { data: contactsData } = useQuery({
     queryKey: ['contacts'],
@@ -49,21 +55,21 @@ export default function DashboardPage() {
     },
     { 
       label: 'Aktif Kampanya', 
-      value: campaignsData?.items?.filter((c: any) => c.status === 'scheduled' || c.status === 'processing').length || 0, 
+      value: (campaignsData?.items || []).filter((c: Campaign) => c.status === 'scheduled' || c.status === 'processing').length || 0, 
       icon: Share2,
       color: 'green',
       trend: 'Aktif'
     },
     { 
       label: 'Bekleyen Gönderim', 
-      value: campaignsData?.items?.filter((c: any) => c.status === 'scheduled').length || 0, 
+      value: (campaignsData?.items || []).filter((c: Campaign) => c.status === 'scheduled').length || 0, 
       icon: Clock,
       color: 'orange',
       trend: 'Zamanlı'
     },
     { 
       label: 'Tamamlanan', 
-      value: campaignsData?.items?.filter((c: any) => c.status === 'completed').length || 0, 
+      value: (campaignsData?.items || []).filter((c: Campaign) => c.status === 'completed').length || 0, 
       icon: RefreshCw,
       color: 'emerald',
       trend: 'Toplam'
@@ -133,7 +139,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-3">
-            {campaignsData?.items?.slice(0, 4).map((item: any) => (
+            {(campaignsData?.items || []).slice(0, 4).map((item: Campaign) => (
               <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-50 hover:bg-gray-50 transition-colors">
                 <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 uppercase font-bold text-[10px]">
                   {item.name.charAt(0)}
@@ -175,7 +181,6 @@ export default function DashboardPage() {
             </div>
           </div>
           
-          {/* Abstract circles */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/20 rounded-full -ml-16 -mb-16 blur-2xl" />
           

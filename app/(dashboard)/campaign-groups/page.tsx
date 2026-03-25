@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { 
   Plus, Trash2, Edit2, Users, Search, X, 
-  LayoutGrid, List, Columns, User, Phone, Layers
+  LayoutGrid, List, Columns, Layers
 } from 'lucide-react';
 
 interface Group {
@@ -30,7 +30,6 @@ export default function CampaignGroupsPage() {
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
-  const [isEditContactModalOpen, setIsEditContactModalOpen] = useState(false);
   
   // Group editing state
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
@@ -39,10 +38,6 @@ export default function CampaignGroupsPage() {
   // Member management state
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
-
-  // Contact editing state
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [contactFormData, setContactFormData] = useState({ fullName: '', primaryPhone: '' });
 
   // Fetch groups
   const { data: groupsData, isLoading: groupsLoading } = useQuery({

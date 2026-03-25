@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addDays, getDay } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Moon, Star, PenLine, X, Bell, Trash2, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Moon, Star, PenLine, X, Trash2, Plus, Calendar } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 
@@ -45,7 +45,7 @@ export default function CalendarPage() {
     }
   });
 
-  const notes = notesData?.items || [];
+  const notes = (notesData?.items || []) as any[];
 
   const addNoteMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -81,18 +81,21 @@ export default function CalendarPage() {
         </div>
         <div className="flex items-center gap-2">
           <button 
+            type="button"
             onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
             className="p-3 hover:bg-gray-50 rounded-2xl text-gray-400 transition-all border border-gray-100 hover:text-blue-600"
           >
             <ChevronLeft size={20} strokeWidth={3} />
           </button>
           <button 
+            type="button"
             onClick={() => setCurrentMonth(new Date())}
             className="px-5 py-3 h-11 bg-white border border-gray-100 rounded-2xl text-[11px] font-black tracking-widest uppercase text-gray-500 hover:text-blue-600 hover:bg-gray-50 transition-all"
           >
             BUGÜN
           </button>
           <button 
+            type="button"
             onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
             className="p-3 hover:bg-gray-50 rounded-2xl text-gray-400 transition-all border border-gray-100 hover:text-blue-600"
           >
@@ -124,22 +127,22 @@ export default function CalendarPage() {
 
     const rows = [];
     let days = [];
-    let day = startDate;
+    let dayCursor = startDate;
 
-    while (day <= endDate) {
+    while (dayCursor <= endDate) {
       for (let i = 0; i < 7; i++) {
-        const formattedDate = format(day, 'yyyy-MM-dd');
-        const isCurrentMonth = isSameMonth(day, monthStart);
-        const isToday = isSameDay(day, new Date());
+        const currentDay = dayCursor;
+        const formattedDate = format(currentDay, 'yyyy-MM-dd');
+        const isCurrentMonth = isSameMonth(currentDay, monthStart);
+        const isToday = isSameDay(currentDay, new Date());
         const religiousInfo = RELIGIOUS_DAYS.find(rd => rd.date === formattedDate);
         const userNotes = notes.filter((n: any) => n.date === formattedDate);
         
-        const dayRef = day;
         days.push(
           <div
             key={formattedDate}
             onClick={() => {
-              setSelectedDate(dayRef);
+              setSelectedDate(currentDay);
               setIsNoteModalOpen(true);
             }}
             className={`min-h-[140px] p-3 border-r border-b border-gray-100 transition-all hover:bg-blue-50/10 cursor-pointer relative group overflow-hidden ${
@@ -150,7 +153,7 @@ export default function CalendarPage() {
               <span className={`text-sm font-black ${
                 !isCurrentMonth ? 'text-gray-200' : isToday ? 'text-blue-600 underline decoration-2' : 'text-gray-400'
               }`}>
-                {format(day, 'd')}
+                {format(currentDay, 'd')}
               </span>
               {isToday && <div className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-lg shadow-blue-200" />}
             </div>
@@ -193,10 +196,10 @@ export default function CalendarPage() {
             </div>
           </div>
         );
-        day = addDays(day, 1);
+        dayCursor = addDays(dayCursor, 1);
       }
       rows.push(
-        <div className="grid grid-cols-7" key={day.toString()}>
+        <div className="grid grid-cols-7" key={dayCursor.toString()}>
           {days}
         </div>
       );
@@ -268,13 +271,12 @@ export default function CalendarPage() {
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 mt-0.5">NOT VE AJANDA</p>
                   </div>
                </div>
-               <button onClick={() => setIsNoteModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-300 transition-all">
+               <button type="button" onClick={() => setIsNoteModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-300 transition-all">
                   <X size={24} />
                </button>
             </div>
             
             <div className="p-10 space-y-6 overflow-y-auto">
-               {/* SHOW EXISTING NOTES OR RELIGIOUS INFO */}
                {RELIGIOUS_DAYS.find(rd => rd.date === format(selectedDate, 'yyyy-MM-dd')) && (
                   <div className="p-5 rounded-[24px] bg-purple-50 border border-purple-100">
                      <div className="flex items-center gap-2 mb-2 text-purple-700">
@@ -294,8 +296,9 @@ export default function CalendarPage() {
                       <div className="flex justify-between items-start mb-1">
                         <span className="font-black text-gray-900 text-sm tracking-tight">{note.title}</span>
                         <button 
+                          type="button"
                           onClick={() => deleteNoteMutation.mutate(note.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                          className="p-1.5 text-gray-400 hover:text-red-500 opacity-100 transition-all"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -339,6 +342,12 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 12px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+      `}</style>
     </div>
   );
 }

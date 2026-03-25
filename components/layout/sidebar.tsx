@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, 
   Settings, RefreshCw, ClipboardList, 
   ShieldCheck, Share2, Layers, MessageSquare,
-  Users2, FolderOpen, History
+  Users2, FolderOpen, History, Calendar
 } from 'lucide-react';
 import packageInfo from '@/package.json';
 
@@ -15,6 +15,7 @@ const navItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Kişiler', href: '/contacts', icon: Users },
   { label: 'Rehber Grupları', href: '/groups', icon: Users2 },
+  { label: 'Takvim', href: '/calendar', icon: Calendar },
   { label: 'Kampanyalar', href: '/campaigns', icon: Share2 },
   { label: 'Kampanya Grupları', href: '/campaign-groups', icon: Layers },
   { label: 'Şablonlar', href: '/templates', icon: FolderOpen },

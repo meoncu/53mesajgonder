@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
-
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const limitParams = parseInt(searchParams.get('limit') || '4000');
     
-    // Switch to Supabase
     const supabase = getSupabaseAdmin();
     const { data: items, error: dbError } = await supabase
       .from('contacts')
@@ -18,7 +15,6 @@ export async function GET(request: NextRequest) {
 
     if (dbError) throw dbError;
 
-    // Map snake_case to camelCase for frontend compatibility
     const formattedItems = (items || []).map((item: any) => ({
       id: item.id,
       fullName: item.full_name,
@@ -30,7 +26,7 @@ export async function GET(request: NextRequest) {
       source: item.source,
       notes: item.notes,
       tags: item.tags,
-      groupIds: item.group_ids,
+      groupIds: item.group_ids || [],
       isActive: item.is_active,
       ownerUserId: item.owner_user_id,
       createdAt: item.created_at,
@@ -48,4 +44,37 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { fullName, primaryPhone, notes, groupIds, tags } = body;
 
+    const supabase = getSupabaseAdmin();
+    
+    const dbContact = {
+      full_name: fullName,
+      primary_phone: primaryPhone,
+      normalized_primary_phone: primaryPhone?.replace(/[^0-9]/g, ''),
+      notes: notes || '',
+      group_ids: groupIds || [],
+      tags: tags || [],
+      source: 'manual',
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('contacts')
+      .insert(dbContact)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, item: data });
+  } catch (error) {
+    console.error('Failed to create contact in Supabase:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}

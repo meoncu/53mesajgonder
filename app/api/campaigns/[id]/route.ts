@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function PATCH(
   request: NextRequest,
@@ -10,22 +10,29 @@ export async function PATCH(
     const body = await request.json();
     const { name, message, groupIds, scheduledAt, status } = body;
 
+    const supabase = getSupabaseAdmin();
+    
     const updateData: any = {
-      updatedAt: new Date().toISOString()
+      updated_at: new Date().toISOString()
     };
     
     if (name !== undefined) updateData.name = name;
     if (message !== undefined) updateData.message = message;
-    if (groupIds !== undefined) updateData.groupIds = groupIds;
-    if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt;
+    if (groupIds !== undefined) updateData.group_ids = groupIds;
+    if (scheduledAt !== undefined) updateData.scheduled_at = scheduledAt;
     if (status !== undefined) updateData.status = status;
 
-    await adminDb.collection('campaigns').doc(id).update(updateData);
+    const { error: dbError } = await supabase
+      .from('campaigns')
+      .update(updateData)
+      .eq('id', id);
+
+    if (dbError) throw dbError;
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Failed to update campaign:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Failed to update campaign in Supabase:', error);
+    return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -35,10 +42,18 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await adminDb.collection('campaigns').doc(id).delete();
+    const supabase = getSupabaseAdmin();
+
+    const { error: dbError } = await supabase
+      .from('campaigns')
+      .delete()
+      .eq('id', id);
+
+    if (dbError) throw dbError;
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Failed to delete campaign:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Failed to delete campaign from Supabase:', error);
+    return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
 }

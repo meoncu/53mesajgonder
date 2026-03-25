@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { getAppSettings } from '@/lib/firebase/settings';
 import { getLocalTimestamp, getUtcTimestamp } from '@/lib/utils/time';
 
@@ -9,56 +9,74 @@ export async function GET() {
     const now = getUtcTimestamp();
     const localNow = await getLocalTimestamp();
     
-    // Find scheduled campaigns that are due
-    const snapshot = await adminDb.collection('campaigns')
-      .where('status', '==', 'scheduled')
-      .where('scheduledAt', '<=', now)
-      .get();
+    const supabase = getSupabaseAdmin();
 
-    if (snapshot.empty) {
+    // Find scheduled campaigns that are due
+    const { data: dueCampaigns, error: campaignError } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('status', 'scheduled')
+      .lte('scheduled_at', now);
+
+    if (campaignError) throw campaignError;
+
+    if (!dueCampaigns || dueCampaigns.length === 0) {
       return NextResponse.json({ items: [] });
     }
 
-    const campaigns = [];
+    const processedCampaigns = [];
 
-    for (const doc of snapshot.docs) {
-      const data = doc.data();
-      const groupIds = data.groupIds || [];
-      let contacts: any[] = [];
+    for (const campaign of dueCampaigns) {
+      const groupIds = campaign.group_ids || [];
+      const contacts: any[] = [];
 
       if (groupIds.length > 0) {
-        // Fetch all unique contacts for these groups
-        const contactsSnapshot = await adminDb.collection('contacts')
-          .where('groupIds', 'array-contains-any', groupIds)
-          .get();
+        // Fetch contacts that belong to any of these groups
+        // Using overlaps (&&) for array columns in Supabase
+        const { data: contactsData, error: contactError } = await supabase
+          .from('contacts')
+          .select('id, full_name, primary_phone, normalized_primary_phone')
+          .overlaps('group_ids', groupIds);
 
-        contacts = contactsSnapshot.docs.map(cDoc => {
-          const cData = cDoc.data();
-          return {
-            id: cDoc.id,
-            fullName: cData.fullName,
-            phone: cData.normalizedPrimaryPhone || cData.primaryPhone
-          };
-        }).filter(c => !!c.phone); // Only contacts with phone
+        if (contactError) {
+          console.error(`Failed to fetch contacts for campaign ${campaign.id}:`, contactError);
+          continue;
+        }
+
+        if (contactsData) {
+          contactsData.forEach(c => {
+            const phone = c.normalized_primary_phone || c.primary_phone;
+            if (phone) {
+              contacts.push({
+                id: c.id,
+                fullName: c.full_name,
+                phone: phone
+              });
+            }
+          });
+        }
       }
 
-      campaigns.push({
-        id: doc.id,
-        name: data.name,
-        message: data.message,
+      processedCampaigns.push({
+        id: campaign.id,
+        name: campaign.name,
+        message: campaign.message,
         contacts,
         processedAtLocal: localNow
       });
 
-      // Update status to 'processing' so it's not picked up again immediately
-      await doc.ref.update({ 
-        status: 'processing', 
-        updatedAt: now 
-      });
+      // Update status to 'processing'
+      await supabase
+        .from('campaigns')
+        .update({ 
+          status: 'processing', 
+          updated_at: now 
+        })
+        .eq('id', campaign.id);
     }
 
     return NextResponse.json({ 
-      items: campaigns,
+      items: processedCampaigns,
       processedAt: now,
       timezone: settings.timezone
     });

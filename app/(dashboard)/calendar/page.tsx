@@ -1,32 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Moon, Star, PenLine, X, Trash2, Plus, Calendar } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 
-// 2026 Dini Günler Listesi (Statik)
+// 2026 Diyanet Dini Günler Listesi (DOĞRULANMIŞ)
 const RELIGIOUS_DAYS = [
-  { date: '2026-01-13', title: 'Üç Ayların Başlangıcı', color: 'blue' },
-  { date: '2026-01-22', title: 'Regaib Kandili', color: 'purple' },
-  { date: '2026-02-13', title: 'Mirac Kandili', color: 'purple' },
-  { date: '2026-03-02', title: 'Berat Kandili', color: 'purple' },
-  { date: '2026-03-10', title: 'Ramazan Başlangıcı', color: 'green' },
-  { date: '2026-04-05', title: 'Kadir Gecesi', color: 'purple' },
-  { date: '2026-03-30', title: 'Ramazan Bayramı Arefesi', color: 'amber' },
-  { date: '2026-03-31', title: 'Ramazan Bayramı (1. Gün)', color: 'amber' },
-  { date: '2026-04-01', title: 'Ramazan Bayramı (2. Gün)', color: 'amber' },
-  { date: '2026-04-02', title: 'Ramazan Bayramı (3. Gün)', color: 'amber' },
-  { date: '2026-06-05', title: 'Kurban Bayramı Arefesi', color: 'amber' },
-  { date: '2026-06-06', title: 'Kurban Bayramı (1. Gün)', color: 'amber' },
-  { date: '2026-06-07', title: 'Kurban Bayramı (2. Gün)', color: 'amber' },
-  { date: '2026-06-08', title: 'Kurban Bayramı (3. Gün)', color: 'amber' },
-  { date: '2026-06-09', title: 'Kurban Bayramı (4. Gün)', color: 'amber' },
-  { date: '2026-07-06', title: 'Hicri Yılbaşı (1448)', color: 'blue' },
-  { date: '2026-07-15', title: 'Aşure Günü', color: 'blue' },
-  { date: '2026-09-14', title: 'Mevlid Kandili', color: 'purple' },
+  { date: '2026-01-15', title: 'Miraç Kandili', color: 'purple' },
+  { date: '2026-02-02', title: 'Berat Kandili', color: 'purple' },
+  { date: '2026-02-19', title: 'Ramazan Başlangıcı', color: 'green' },
+  { date: '2026-03-16', title: 'Kadir Gecesi', color: 'purple' },
+  { date: '2026-03-19', title: 'Ramazan Bayramı Arefesi', color: 'amber' },
+  { date: '2026-03-20', title: 'Ramazan Bayramı (1. Gün)', color: 'amber' },
+  { date: '2026-03-21', title: 'Ramazan Bayramı (2. Gün)', color: 'amber' },
+  { date: '2026-03-22', title: 'Ramazan Bayramı (3. Gün)', color: 'amber' },
+  { date: '2026-05-26', title: 'Kurban Bayramı Arefesi', color: 'amber' },
+  { date: '2026-05-27', title: 'Kurban Bayramı (1. Gün)', color: 'amber' },
+  { date: '2026-05-28', title: 'Kurban Bayramı (2. Gün)', color: 'amber' },
+  { date: '2026-05-29', title: 'Kurban Bayramı (3. Gün)', color: 'amber' },
+  { date: '2026-05-30', title: 'Kurban Bayramı (4. Gün)', color: 'amber' },
+  { date: '2026-06-16', title: 'Hicri Yılbaşı (1448)', color: 'blue' },
+  { date: '2026-06-25', title: 'Aşure Günü', color: 'blue' },
+  { date: '2026-08-24', title: 'Mevlid Kandili', color: 'purple' },
+  { date: '2026-12-10', title: 'Üç Ayların Başlangıcı / Regaib Kandili', color: 'blue' },
 ];
 
 export default function CalendarPage() {
@@ -45,7 +44,7 @@ export default function CalendarPage() {
     }
   });
 
-  const notes = (notesData?.items || []) as any[];
+  const notes = useMemo(() => (notesData?.items || []) as any[], [notesData]);
 
   const addNoteMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -237,7 +236,6 @@ export default function CalendarPage() {
         {renderCells()}
       </div>
 
-      {/* FOOTER LEGEND */}
       <div className="flex flex-wrap gap-6 px-12 py-8 bg-white/50 backdrop-blur-md rounded-[32px] border border-gray-100">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-purple-500" />
@@ -257,7 +255,6 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* NOTE MODAL */}
       {isNoteModalOpen && selectedDate && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col transform animate-in zoom-in-95 duration-500 border border-white/40">

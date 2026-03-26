@@ -78,15 +78,13 @@ export async function POST(request: Request) {
   const { content, narrator, source, type } = body;
   const supabase = getSupabase();
 
-  console.log('Inserting content:', { type, content });
-
   try {
     if (type === 'hadis') {
       const { data, error } = await supabase
         .from('hadisler')
         .insert([{ metin_turkce: content, ravi: narrator, kaynak: source }])
         .select()
-        .single();
+        .maybeSingle(); 
       if (error) throw error;
       return NextResponse.json(data);
     } else {
@@ -94,12 +92,11 @@ export async function POST(request: Request) {
         .from('content_library')
         .insert([{ content, narrator, source, type, order_index: Date.now() / 1000 }])
         .select()
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return NextResponse.json(data);
     }
   } catch (error: any) {
-    console.error('Insert Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -110,17 +107,21 @@ export async function PATCH(request: Request) {
   const { id, content, narrator, source, type } = body;
   const supabase = getSupabase();
 
-  console.log('Patching record:', { id, type });
-
   try {
+    const numericId = parseInt(id);
+    if (isNaN(numericId) && type === 'hadis') throw new Error('Geçersiz ID formatı');
+
     if (type === 'hadis') {
       const { data, error } = await supabase
         .from('hadisler')
         .update({ metin_turkce: content, ravi: narrator, kaynak: source })
-        .eq('id', parseInt(id))
+        .eq('id', numericId)
         .select()
-        .single();
+        .maybeSingle(); // Daha güvenli bir karşılama
+
       if (error) throw error;
+      if (!data) throw new Error(`ID: ${id} ile eşleşen kayıt veritabanında bulunamadı.`);
+      
       return NextResponse.json(data);
     } else {
       const { data, error } = await supabase
@@ -128,8 +129,11 @@ export async function PATCH(request: Request) {
         .update({ content, narrator, source })
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
+
       if (error) throw error;
+      if (!data) throw new Error(`ID: ${id} ile eşleşen kayıt bulunamadı.`);
+
       return NextResponse.json(data);
     }
   } catch (error: any) {

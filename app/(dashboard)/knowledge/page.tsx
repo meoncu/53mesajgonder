@@ -150,6 +150,25 @@ export default function KnowledgePage() {
     }
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/knowledge/library?id=${id}&type=${activeType}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Silinemedi');
+      }
+      return res.json();
+    },
+    onError: (error: any) => {
+      alert('Kayıt silinirken bir hata oluştu: ' + error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-library'] });
+    }
+  });
+
   const filteredItems = items.filter(item => 
     item.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.narrator && item.narrator.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -180,7 +199,7 @@ export default function KnowledgePage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedItem) {
-      updateMutation.mutate({ id: selectedItem.id, data: formData });
+      updateMutation.mutate({ id: selectedItem.id, data: { ...formData, type: activeType } });
     } else {
       createMutation.mutate(formData);
     }
@@ -321,7 +340,14 @@ export default function KnowledgePage() {
                         >
                           <Edit3 size={14} />
                         </button>
-                        <button className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-white rounded-lg border border-transparent hover:border-red-100 transition-all shadow-sm">
+                        <button 
+                          onClick={() => {
+                            if (confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
+                              deleteMutation.mutate(item.id);
+                            }
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-white rounded-lg border border-transparent hover:border-red-100 transition-all shadow-sm"
+                        >
                           <Trash2 size={14} />
                         </button>
                       </div>

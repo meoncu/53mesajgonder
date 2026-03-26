@@ -13,24 +13,15 @@ export async function GET(request: Request) {
   const type = searchParams.get('type') || 'hadis';
   const supabase = getSupabase();
 
-  console.log('Fetching Library for type:', type);
-
   try {
     if (type === 'hadis') {
-      // DİKKAT: 'hadisler' tablosunda id sütunu int8 olduğu için sıralama id bazlı
-      const { data: hadisler, error: hadisError } = await supabase
+      const { data: hadisler, error } = await supabase
         .from('hadisler')
         .select('*')
         .order('id', { ascending: true });
 
-      if (hadisError) {
-        console.error('Hadisler Table Fetch Error:', hadisError);
-        throw hadisError;
-      }
+      if (error) throw error;
 
-      console.log('Hadis count from DB:', hadisler?.length || 0);
-
-      // GÖNDERİLENLERİ TAKİP ETMEK İÇİN LOGLARI DA ÇEKELİM
       const { data: logs } = await supabase
         .from('content_logs')
         .select('content_id')
@@ -60,7 +51,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ items: data });
     }
   } catch (error: any) {
-    console.error('Total API Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -71,4 +61,70 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.from('content_library').insert([body]).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
+}
+
+// GÜNCELLEME (PATCH) METODU
+export async function PATCH(request: Request) {
+  const body = await request.json();
+  const { id, content, narrator, source, type } = body;
+  const supabase = getSupabase();
+
+  try {
+    if (type === 'hadis') {
+      // SİZİN 'hadisler' TABLOSUNU GÜNCELLE
+      const { data, error } = await supabase
+        .from('hadisler')
+        .update({
+          metin_turkce: content,
+          ravi: narrator,
+          kaynak: source,
+        })
+        .eq('id', parseInt(id)) // id int8 olduğu için sayıya çeviriyoruz
+        .select()
+        .single();
+
+      if (error) throw error;
+      return NextResponse.json(data);
+    } else {
+      // NORMAL KÜTÜPHANEYİ GÜNCELLE
+      const { data, error } = await supabase
+        .from('content_library')
+        .update({
+          content,
+          narrator,
+          source,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return NextResponse.json(data);
+    }
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// SİLME (DELETE) METODU
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  const type = searchParams.get('type') || 'hadis';
+  const supabase = getSupabase();
+
+  if (!id) return NextResponse.json({ error: 'ID eksik' }, { status: 400 });
+
+  try {
+    if (type === 'hadis') {
+      const { error } = await supabase.from('hadisler').delete().eq('id', parseInt(id));
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from('content_library').delete().eq('id', id);
+      if (error) throw error;
+    }
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

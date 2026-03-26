@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     // 1. Gönderim zamanı gelmiş (veya geçirilmiş) aktif otomasyonları bul
     // Not: n8n her 5 dakikada bir burayı tetikleyebilir.

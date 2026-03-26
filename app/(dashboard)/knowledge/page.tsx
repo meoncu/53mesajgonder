@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { 
-  Search, Edit3, X, FileText, Trash2, Plus, 
+  Search, Edit3, X, Trash2, Plus, 
   BookOpen, Hash, User, Bookmark, CheckCircle2, 
   RefreshCcw, Settings, Clock, Users, ArrowRight
 } from 'lucide-react';
@@ -63,7 +63,7 @@ export default function KnowledgePage() {
   });
 
   // Fetch Automation Settings for current type
-  const { data: autoData } = useQuery({
+  useQuery({
     queryKey: ['knowledge-automation', activeType],
     queryFn: async () => {
       const res = await fetch(`/api/knowledge/automation`);
@@ -268,7 +268,7 @@ export default function KnowledgePage() {
               {/* CONTENT */}
               <div className="space-y-3 cursor-pointer" onClick={() => openEditModal(item)}>
                 <p className="text-sm font-semibold text-gray-900 leading-relaxed line-clamp-4 font-outfit">
-                  "{item.content}"
+                  &quot;{item.content}&quot;
                 </p>
                 
                 <div className="flex flex-col gap-1.5 pt-2">

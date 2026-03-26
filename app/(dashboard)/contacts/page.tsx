@@ -274,17 +274,17 @@ export default function ContactsPage() {
   return (
     <div className="space-y-4 max-w-6xl mx-auto pb-20 px-4">
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-black text-gray-900 font-outfit tracking-tighter">Rehber</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-gray-900 font-outfit">Rehber</h1>
             {duplicateNumbers.size > 0 && (
               <button 
                 onClick={() => setShowOnlyDuplicates(!showOnlyDuplicates)}
-                className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center gap-1.5 transition-all
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1.5 transition-all
                   ${showOnlyDuplicates 
-                    ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-200' 
-                    : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100 animate-pulse hover:animate-none'
+                    ? 'bg-red-600 text-white border-red-600' 
+                    : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'
                   }`}
                 title={showOnlyDuplicates ? 'Tüm listeyi göster' : `${duplicateNumbers.size} farklı numara mükerrer kaydedilmiş. Tıklayarak listele.`}
               >
@@ -294,16 +294,16 @@ export default function ContactsPage() {
               </button>
             )}
           </div>
-          <p className="text-gray-500 text-[11px] font-bold font-outfit uppercase tracking-widest opacity-60">Kontaklarınızı yönetin ve gruplandırın.</p>
+          <p className="text-gray-500 text-xs">Kontaklarınızı yönetin ve gruplandırın.</p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button 
             onClick={openAddModal}
-            className="rounded-[18px] px-6 py-2.5 h-12 font-black text-xs bg-gray-900 text-white hover:bg-black transition-all shadow-xl shadow-gray-200 flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm h-9 px-4 text-sm font-bold flex items-center gap-2"
           >
-            <Plus size={16} strokeWidth={3} />
-            HIZLI KAYIT +
+            <Plus size={16} />
+            Hızlı Kayıt
           </Button>
 
           {selectedIds.length > 0 && (
@@ -311,66 +311,66 @@ export default function ContactsPage() {
               onClick={handleBulkDelete}
               disabled={bulkDeleteMutation.isPending}
               variant="destructive"
-              className="rounded-[18px] px-6 py-2.5 h-12 font-black text-xs bg-red-50 text-red-600 border border-red-100 hover:bg-red-600 hover:text-white transition-all shadow-xl shadow-red-100 flex items-center gap-2 animate-in zoom-in-95"
+              className="rounded-lg h-9 px-4 text-sm font-bold flex items-center gap-2"
             >
               <Trash2 size={16} />
-              {selectedIds.length} SİL
+              {selectedIds.length} Sil
             </Button>
           )}
           
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
               placeholder="Ara (İsim veya numara)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-5 py-3 bg-white border border-gray-100 rounded-[18px] focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold shadow-sm h-12"
+              className="w-full pl-9 pr-4 py-2 bg-white border border-border rounded-lg focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm font-medium h-9"
             />
           </div>
         </div>
       </div>
 
       {/* TABLE SECTION */}
-      <div className="overflow-hidden rounded-[28px] border border-gray-100 bg-white shadow-xl shadow-gray-100/50">
+      <div className="bg-white border border-border rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-gray-50/40 uppercase font-black text-gray-400 border-b border-gray-50 tracking-widest">
-              <tr>
-                <th className="px-6 py-6 w-10">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-gray-50 border-b border-border">
+              <tr className="text-gray-500 font-bold text-xs uppercase tracking-wider">
+                <th className="px-6 py-4 w-10">
                   <button 
                     onClick={toggleSelectAll}
-                    className="p-1 rounded-lg hover:bg-blue-50 transition-colors"
+                    className="p-1 rounded-md hover:bg-gray-100 transition-colors"
                   >
                     {selectedIds.length === filteredContacts.length && filteredContacts.length > 0
-                      ? <CheckSquare size={20} className="text-blue-600" /> 
-                      : <Square size={20} className="text-gray-300" />
+                      ? <CheckSquare size={18} className="text-blue-600" /> 
+                      : <Square size={18} className="text-gray-300" />
                     }
                   </button>
                 </th>
-                <th className="px-6 py-6 cursor-pointer hover:bg-gray-100/50 transition-colors group" onClick={() => handleSort('fullName')}>
+                <th className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('fullName')}>
                   <div className="flex items-center gap-1.5">
                     Ad Soyad
-                    {sortConfig?.key === 'fullName' ? (
-                      sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-blue-600" /> : <ArrowDown size={14} className="text-blue-600" />
-                    ) : <ArrowUp size={14} className="text-gray-200 opacity-0 group-hover:opacity-100" />}
+                    {sortConfig?.key === 'fullName' && (
+                       sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-blue-600" /> : <ArrowDown size={14} className="text-blue-600" />
+                    )}
                   </div>
                 </th>
-                <th className="px-6 py-6">İletişim</th>
-                <th className="px-6 py-6">Gruplar</th>
-                <th className="px-6 py-6 w-24">Kaynak</th>
-                <th className="px-6 py-6 text-right">İşlem</th>
+                <th className="px-6 py-4">İletişim</th>
+                <th className="px-6 py-4">Gruplar</th>
+                <th className="px-6 py-4 w-24">Kaynak</th>
+                <th className="px-6 py-4 text-right">İşlem</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-border">
               {filteredContacts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-32 text-center bg-gray-50/20">
+                  <td colSpan={7} className="px-6 py-20 text-center bg-gray-50/20">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="bg-white p-8 rounded-[32px] mb-6 shadow-xl shadow-gray-100 border border-gray-50">
-                        <Users size={64} className="text-blue-100" strokeWidth={1} />
+                      <div className="bg-white p-6 rounded-2xl mb-4 shadow-sm border border-border text-gray-200">
+                        <Users size={48} strokeWidth={1.5} />
                       </div>
-                      <p className="text-xl font-black text-gray-900 tracking-tight">Eşleşen kayıt bulunamadı...</p>
+                      <p className="text-gray-500 font-medium">Eşleşen kayıt bulunamadı...</p>
                     </div>
                   </td>
                 </tr>
@@ -381,64 +381,63 @@ export default function ContactsPage() {
                   
                   const firstGroupId = contact.groupIds?.[0];
                   const firstGroup = firstGroupId ? groups.find(g => g.id === firstGroupId) : null;
-                  const rowColor = firstGroup?.color || '';
+                  const rowColor = firstGroup?.color || '#3B82F6';
 
                   return (
                     <tr 
                       key={contact.id} 
-                      className={`hover:bg-gray-50/80 transition-all group border-b border-gray-50/50 last:border-0 ${isSelected ? 'bg-blue-50/20' : ''}`}
+                      className={`hover:bg-gray-50/50 transition-colors group ${isSelected ? 'bg-blue-50/30' : ''}`}
                     >
-                      <td className="px-6 py-5">
+                      <td className="px-6 py-3">
                         <button 
                           onClick={() => toggleSelect(contact.id)}
-                          className="p-1 rounded-lg transition-colors"
+                          className="p-1 rounded-md transition-colors"
                         >
                           {isSelected 
-                            ? <CheckSquare size={20} className="text-blue-600" /> 
-                            : <Square size={20} className="text-gray-200 group-hover:text-gray-300" />
+                            ? <CheckSquare size={18} className="text-blue-600" /> 
+                            : <Square size={18} className="text-gray-200 group-hover:text-gray-300" />
                           }
                         </button>
                       </td>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-4">
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-3">
                           <div 
-                            className="w-11 h-11 rounded-[16px] text-white flex items-center justify-center font-black text-sm shadow-lg border-2 border-white transform transition-transform group-hover:scale-105"
-                            style={{ backgroundColor: rowColor || '#3B82F6', boxShadow: `0 8px 20px -8px ${rowColor || '#3B82F6'}` }}
+                            className="w-9 h-9 rounded-xl text-white flex items-center justify-center font-bold text-xs shadow-sm"
+                            style={{ backgroundColor: rowColor }}
                           >
-                            {contact.fullName.charAt(0)}
+                            {contact.fullName.charAt(0).toUpperCase()}
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-black text-gray-900 text-[13px] tracking-tight">{contact.fullName}</span>
-                            {contact.notes && <span className="text-[10px] text-gray-400 truncate max-w-[150px] font-bold uppercase tracking-widest opacity-70 mt-0.5">{contact.notes}</span>}
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-gray-900 text-sm truncate">{contact.fullName}</span>
+                            {contact.notes && <span className="text-[10px] text-gray-400 truncate max-w-[150px]">{contact.notes}</span>}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-5">
-                        <div className="flex flex-col gap-1">
-                          <div className={`flex items-center gap-2 font-black text-[13px] tracking-tight ${isDuplicate ? 'text-red-500 bg-red-50 px-2 py-0.5 rounded-lg w-fit' : 'text-gray-700'}`}>
-                            <Phone size={12} className={isDuplicate ? 'text-red-500' : 'text-blue-500'} />
+                      <td className="px-6 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          <div className={`flex items-center gap-2 font-semibold text-sm ${isDuplicate ? 'text-red-500 bg-red-50 px-1.5 py-0.5 rounded cursor-help' : 'text-gray-700'}`}>
+                            <Phone size={12} className={isDuplicate ? 'text-red-500' : 'text-gray-400'} />
                             {contact.primaryPhone || '-'}
-                            {isDuplicate && <AlertTriangle size={10} className="animate-bounce" />}
+                            {isDuplicate && <AlertTriangle size={10} className="text-red-500" />}
                           </div>
-                          {contact.primaryEmail && <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-5">{contact.primaryEmail}</span>}
+                          {contact.primaryEmail && <span className="text-gray-400 text-[10px] ml-5">{contact.primaryEmail}</span>}
                         </div>
                       </td>
-                      <td className="px-6 py-5">
-                        <div className="flex flex-wrap gap-2">
+                      <td className="px-6 py-3">
+                        <div className="flex flex-wrap gap-1.5">
                           {(contact.groupIds || []).map((gid) => {
                             const group = groups.find(g => g.id === gid);
                             if (!group) return null;
                             return (
                               <span 
                                 key={gid} 
-                                className="px-3 py-1.5 rounded-[12px] text-[9px] font-black border flex items-center gap-1.5 shadow-sm transition-all hover:scale-105"
+                                className="px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 shadow-sm"
                                 style={{ 
                                   backgroundColor: `${group.color || '#3B82F6'}10`, 
                                   color: group.color || '#3B82F6',
                                   borderColor: `${group.color || '#3B82F6'}20`
                                 }}
                               >
-                                <Tag size={10} strokeWidth={3} />
                                 {group.name.toUpperCase()}
                               </span>
                             );
@@ -446,15 +445,15 @@ export default function ContactsPage() {
                           {(!contact.groupIds || contact.groupIds.length === 0) && (
                             <button 
                               onClick={() => openEditModal(contact)}
-                              className="text-gray-300 hover:text-blue-600 transition-all flex items-center gap-1 text-[9px] font-bold py-1.5 px-3 border border-dashed border-gray-100 rounded-[12px] hover:border-blue-100 uppercase tracking-widest"
+                              className="text-gray-300 hover:text-blue-600 transition-colors flex items-center gap-1 text-[10px] font-bold py-1 px-2 border border-dashed border-gray-200 rounded-lg hover:border-blue-200"
                             >
                               <Plus size={10} /> GRUP EKLE
                             </button>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-5">
-                        <span className={`inline-flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-[9px] font-black border shadow-sm tracking-widest ${
+                      <td className="px-6 py-3">
+                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold border ${
                           contact.source === 'google' 
                             ? 'bg-blue-50 text-blue-700 border-blue-100' 
                             : 'bg-green-50 text-green-700 border-green-100'
@@ -462,21 +461,21 @@ export default function ContactsPage() {
                           {contact.source === 'google' ? 'GOOGLE' : 'MANUEL'}
                         </span>
                       </td>
-                      <td className="px-6 py-5 text-right">
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                      <td className="px-6 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => openEditModal(contact)}
-                            className="p-3 bg-white shadow-xl shadow-gray-100 border border-gray-100 hover:text-blue-600 rounded-[14px] text-gray-400 transition-all hover:-translate-y-0.5"
+                            className="p-1.5 hover:bg-gray-100 text-gray-400 hover:text-blue-600 rounded-md transition-colors"
                             title="Düzenle"
                           >
-                            <Edit3 size={18} />
+                            <Edit3 size={16} />
                           </button>
                           <button
                             onClick={() => handleDelete(contact)}
-                            className="p-3 bg-white shadow-xl shadow-gray-100 border border-gray-100 hover:text-red-600 rounded-[14px] text-gray-400 transition-all hover:-translate-y-0.5"
+                            className="p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-md transition-colors"
                             title="Sil"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
@@ -487,8 +486,8 @@ export default function ContactsPage() {
             </tbody>
           </table>
         </div>
-        <div className="px-8 py-5 bg-gray-50/30 border-t border-gray-50 flex justify-between items-center mt-auto">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+        <div className="px-6 py-4 bg-gray-50/30 border-t border-border flex justify-between items-center">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
             {selectedIds.length > 0 
               ? `${selectedIds.length} / ${filteredContacts.length} KİŞİ SEÇİLDİ`
               : `TOPLAM ${filteredContacts.length} KAYIT LİSTELENDİ`
@@ -497,80 +496,71 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      {/* MODAL SECTION - THE SAME PREMIUM LOOK FOR ADD/EDIT */}
+      {/* MODAL SECTION - Standardized and Clean */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.2)] w-full max-w-md max-h-[92vh] overflow-hidden flex flex-col transform transition-all animate-in zoom-in-95 slide-in-from-bottom-8 duration-500 border border-white/40">
-            <div className="px-12 py-10 border-b border-gray-50 flex justify-between items-center bg-white shrink-0">
-              <div className="flex items-center gap-4">
-                <div className={`p-4 rounded-[20px] text-white shadow-2xl ${selectedContact ? 'bg-blue-600 shadow-blue-200' : 'bg-gray-900 shadow-gray-200'}`}>
-                  {selectedContact ? <User size={24} /> : <Plus size={24} strokeWidth={3} />}
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-gray-900 tracking-tighter leading-none mb-1">
-                    {selectedContact ? 'Kişiyi Düzenle' : 'Yeni Kayıt'}
-                  </h3>
-                  <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                    {selectedContact ? selectedContact.fullName : 'REHBERE EKLE'}
-                  </p>
-                </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <User size={18} className="text-blue-600" />
+                <h3 className="text-base font-bold text-gray-900">
+                  {selectedContact ? 'Kişiyi Düzenle' : 'Yeni Kayıt'}
+                </h3>
               </div>
-              <button onClick={closeEditModal} className="p-3 hover:bg-gray-100 rounded-full text-gray-300 transition-all active:scale-90">
-                <X size={28} />
-              </button>
+              <button onClick={closeEditModal} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400"><X size={18} /></button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-12 space-y-8 overflow-y-auto custom-scrollbar flex-grow">
-              <div className="space-y-3">
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Ad Soyad</label>
-                <div className="relative group/field">
-                  <User className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within/field:text-blue-600 group-focus-within/field:scale-110 transition-all" size={20} />
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Ad Soyad</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                   <input
                     required
                     type="text"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    className="w-full pl-16 pr-8 py-5 bg-gray-50/50 border-2 border-transparent rounded-[24px] focus:ring-8 focus:ring-blue-100/30 focus:border-blue-600 focus:bg-white outline-none transition-all text-[15px] font-black text-gray-900 shadow-inner"
+                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-border rounded-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all text-sm font-medium"
                     placeholder="Örn: Ahmet Yılmaz"
                   />
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Telefon Numarası</label>
-                <div className="relative group/field">
-                  <Phone className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within/field:text-blue-600 group-focus-within/field:scale-110 transition-all" size={20} />
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Telefon Numarası</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                   <input
                     type="tel"
                     value={formData.primaryPhone}
                     onChange={(e) => setFormData({ ...formData, primaryPhone: e.target.value })}
                     placeholder="905xxxxxxxxx"
-                    className="w-full pl-16 pr-8 py-5 bg-gray-50/50 border-2 border-transparent rounded-[24px] focus:ring-8 focus:ring-blue-100/30 focus:border-blue-600 focus:bg-white outline-none transition-all text-[15px] font-black text-gray-900 shadow-inner"
+                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-border rounded-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all text-sm font-medium"
                   />
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Grup Seçimi</label>
-                <div className="grid grid-cols-2 gap-3 max-h-56 overflow-y-auto p-4 bg-gray-50/50 rounded-[32px] border-2 border-gray-50 custom-scrollbar shadow-inner">
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Grup Seçimi</label>
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-3 bg-gray-50 border border-border rounded-lg custom-scrollbar">
                   {groups.map((group) => {
                     const isSelected = formData.groupIds.includes(group.id);
                     return (
                       <div 
                         key={group.id} 
                         onClick={() => toggleGroupId(group.id)}
-                        className={`group flex items-center gap-3 p-4 rounded-[20px] cursor-pointer transition-all border-2 ${
+                        className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all border ${
                           isSelected 
-                            ? 'bg-blue-600 border-blue-600 shadow-xl shadow-blue-200' 
-                            : 'bg-white border-transparent hover:border-blue-100'
+                            ? 'bg-white border-blue-200 shadow-sm' 
+                            : 'bg-white/50 border-transparent hover:border-gray-100'
                         }`}
                       >
-                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                          isSelected ? 'bg-white border-white scale-110' : 'bg-transparent border-gray-100'
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                          isSelected ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-200'
                         }`}>
-                          {isSelected && <div className="w-2.5 h-2.5 bg-blue-600 rounded-sm" />}
+                          {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-sm" />}
                         </div>
-                        <span className={`text-[12px] font-black truncate tracking-tight ${isSelected ? 'text-white' : 'text-gray-700'}`}>
+                        <span className={`text-[11px] font-bold truncate leading-none ${isSelected ? 'text-blue-700' : 'text-gray-600'}`}>
                           {group.name}
                         </span>
                       </div>
@@ -579,30 +569,28 @@ export default function ContactsPage() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Özel Notlar</label>
-                <div className="relative group/field">
-                  <FileText className="absolute left-6 top-6 text-gray-300 group-focus-within/field:text-blue-600 transition-all" size={20} />
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Özel Notlar</label>
+                <div className="relative">
+                  <FileText className="absolute left-3 top-3 text-gray-400" size={14} />
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Kişi hakkında önemli detaylar..."
-                    rows={4}
-                    className="w-full pl-16 pr-8 py-6 bg-gray-50/50 border-2 border-transparent rounded-[32px] focus:ring-8 focus:ring-blue-100/30 focus:border-blue-600 focus:bg-white outline-none transition-all resize-none text-[14px] font-black text-gray-900 shadow-inner"
+                    placeholder="Notlar..."
+                    rows={3}
+                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-border rounded-lg outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none text-sm font-medium"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-5 pt-10 border-t border-gray-50 mt-6 shrink-0 pb-4">
-                <Button type="button" variant="outline" onClick={closeEditModal} className="flex-1 py-8 rounded-[24px] border-2 border-gray-100 hover:bg-gray-50 font-black text-sm h-16 tracking-[0.2em] uppercase transition-all hover:scale-[1.02]">İPTAL</Button>
+              <div className="flex gap-3 pt-4 border-t border-gray-50">
+                <Button type="button" variant="outline" onClick={closeEditModal} className="flex-1 rounded-lg h-9 text-xs font-bold border-gray-200">VAZGEÇ</Button>
                 <Button
                   type="submit"
                   disabled={createContactMutation.isPending || updateContactMutation.isPending}
-                  className={`flex-1 py-8 rounded-[24px] text-white shadow-2xl active:scale-95 transition-all text-sm font-black h-16 tracking-[0.2em] uppercase hover:scale-[1.02] ${
-                    selectedContact ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-gray-900 hover:bg-black shadow-gray-300'
-                  }`}
+                  className={`flex-1 rounded-lg text-white shadow-sm transition-all text-xs font-bold h-9 bg-blue-600 hover:bg-blue-700`}
                 >
-                  {createContactMutation.isPending || updateContactMutation.isPending ? 'KAYDEDİLİYOR...' : 'KAYDET'}
+                  {createContactMutation.isPending || updateContactMutation.isPending ? 'KAYDEDİLİŞOR...' : 'KAYDET'}
                 </Button>
               </div>
             </form>
@@ -611,19 +599,10 @@ export default function ContactsPage() {
       )}
       
       <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #e5e7eb;
-          border-radius: 12px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #d1d5db;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 12px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
       `}</style>
     </div>
   );

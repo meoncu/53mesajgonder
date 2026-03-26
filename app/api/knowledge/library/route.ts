@@ -29,15 +29,19 @@ export async function POST(request: Request) {
   console.log('Knowledge POST Request:', body);
   const { type, content, narrator, source } = body;
 
-  const { data: lastItem } = await supabase
+  const { data: lastItem, error: fetchError } = await supabase
     .from('content_library')
     .select('order_index')
     .eq('type', type)
     .order('order_index', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
-  const nextIndex = lastItem ? lastItem.order_index + 1 : 1;
+  if (fetchError && fetchError.code !== 'PGRST116') {
+     console.error('Fetch last index error:', fetchError);
+  }
+
+  const nextIndex = (lastItem?.order_index ?? 0) + 1;
 
   const { data, error } = await supabase
     .from('content_library')

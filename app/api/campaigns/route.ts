@@ -18,6 +18,9 @@ export async function GET() {
       groupIds: item.group_ids,
       status: item.status,
       scheduledAt: item.scheduled_at,
+      isArchived: item.is_archived,
+      sentAt: item.sent_at,
+      sentRecipients: item.sent_recipients,
       createdAt: item.created_at,
       updatedAt: item.updated_at
     }));

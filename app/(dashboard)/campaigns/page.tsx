@@ -14,6 +14,9 @@ interface Campaign {
   message: string;
   groupIds: string[];
   status: 'draft' | 'scheduled' | 'processing' | 'completed' | 'failed';
+  isArchived: boolean;
+  sentAt?: string;
+  sentRecipients?: { id: string; fullName: string; phone: string }[];
   scheduledAt?: string;
   createdAt: string;
 }
@@ -28,6 +31,7 @@ export default function CampaignsPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+  const [showArchive, setShowArchive] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     message: '',
@@ -149,10 +153,13 @@ export default function CampaignsPage() {
     }
   };
 
-  const campaigns: Campaign[] = campaignsData?.items || [];
+  const rawCampaigns: Campaign[] = campaignsData?.items || [];
   const allGroups: Group[] = groupsData?.items || [];
   const campaignGroups = allGroups.filter(g => g.type === 'campaign');
   const contactGroups = allGroups.filter(g => !g.type || g.type === 'contact');
+
+  // Filter campaigns based on archive state
+  const campaigns = rawCampaigns.filter(c => showArchive ? c.isArchived : !c.isArchived);
 
   const createGroupMutation = useMutation({
     mutationFn: async (newName: string) => {
@@ -182,9 +189,19 @@ export default function CampaignsPage() {
           <h1 className="text-xl font-bold text-gray-900 font-outfit">Kampanyalar</h1>
           <p className="text-gray-500 text-xs text-center md:text-left">Mesaj gönderimlerinizi yönetin.</p>
         </div>
-        <Button onClick={openModal} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm h-9 px-4 text-sm font-bold">
-          <Plus size={16} className="mr-1.5" /> Yeni Kampanya
-        </Button>
+        
+        <div className="flex gap-2">
+          <Button 
+            variant="ghost" 
+            onClick={() => setShowArchive(!showArchive)}
+            className={`rounded-lg text-xs font-bold h-9 px-4 border ${showArchive ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-gray-50 text-gray-500 border-gray-100 hover:bg-white'}`}
+          >
+            {showArchive ? 'Aktif Kampanyalar' : 'Arşivi Göster'}
+          </Button>
+          <Button onClick={openModal} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm h-9 px-4 text-sm font-bold">
+            <Plus size={16} className="mr-1.5" /> Yeni Kampanya
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -202,7 +219,7 @@ export default function CampaignsPage() {
                  <Clock size={18} />}
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleEdit(campaign)} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400"><Pencil size={14} /></button>
+                {!campaign.isArchived && <button onClick={() => handleEdit(campaign)} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400"><Pencil size={14} /></button>}
                 <button onClick={() => { if(confirm('Sil?')) deleteMutation.mutate(campaign.id) }} className="p-1.5 hover:bg-red-50 rounded-md text-red-500"><Trash2 size={14} /></button>
               </div>
             </div>
@@ -224,16 +241,40 @@ export default function CampaignsPage() {
                    campaign.status === 'processing' ? 'Gönderiliyor' : 
                    campaign.status === 'scheduled' ? 'Planlandı' : 'Taslak'}</span>
               </div>
-              <div className="flex items-center justify-between text-[10px] font-bold">
-                <span className="text-gray-400 uppercase tracking-wider">Hedef</span>
-                <span className="text-gray-700">{campaign.groupIds.map(id => {
-                  const g = allGroups.find(g => g.id === id);
-                  return g ? g.name : '';
-                }).filter(Boolean).join(', ') || 'Grup Seçilmedi'}</span>
-              </div>
-              {campaign.scheduledAt && (
+              
+              {showArchive && campaign.sentAt && (
                 <div className="flex items-center justify-between text-[10px] font-bold">
-                  <span className="text-gray-400 uppercase tracking-wider">Plano</span>
+                  <span className="text-gray-400 uppercase tracking-wider">Gönderim Tarihi</span>
+                  <span className="text-gray-700">{new Date(campaign.sentAt).toLocaleString('tr-TR')}</span>
+                </div>
+              )}
+
+              {showArchive && campaign.sentRecipients && (
+                <div className="flex flex-col gap-1 pt-1">
+                  <span className="text-gray-400 uppercase tracking-wider text-[10px] font-bold">Alıcılar ({campaign.sentRecipients.length})</span>
+                  <div className="max-h-24 overflow-y-auto bg-gray-50 p-2 rounded-lg custom-scrollbar">
+                    {campaign.sentRecipients.map((rec, i) => (
+                      <div key={i} className="text-[10px] text-gray-600 border-b border-gray-100 last:border-0 py-1">
+                        {rec.fullName} ({rec.phone})
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!showArchive && (
+                <div className="flex items-center justify-between text-[10px] font-bold">
+                  <span className="text-gray-400 uppercase tracking-wider">Hedef Gruplar</span>
+                  <span className="text-gray-700 truncate max-w-[120px]">{campaign.groupIds.map(id => {
+                    const g = allGroups.find(g => g.id === id);
+                    return g ? g.name : '';
+                  }).filter(Boolean).join(', ') || 'Grup Seçilmedi'}</span>
+                </div>
+              )}
+
+              {!showArchive && campaign.scheduledAt && (
+                <div className="flex items-center justify-between text-[10px] font-bold">
+                  <span className="text-gray-400 uppercase tracking-wider">Planlanan</span>
                   <span className="text-gray-700">{new Date(campaign.scheduledAt).toLocaleString('tr-TR')}</span>
                 </div>
               )}

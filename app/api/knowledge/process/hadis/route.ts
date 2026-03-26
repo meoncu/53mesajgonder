@@ -11,7 +11,7 @@ const getSupabase = () => {
 export async function GET() {
   const supabase = getSupabase();
   try {
-    // SADECE 'hadis' OTOMASYONLARINI ÇEK
+    // 1. AKTİF HADİS OTOMASYONUNU ÇEK
     const { data: auto, error: autoError } = await supabase
       .from('content_automation')
       .select('*')
@@ -21,19 +21,31 @@ export async function GET() {
 
     if (autoError || !auto) return NextResponse.json({ success: false, message: 'Aktif Hadis otomasyonu bulunamadı.' });
 
-    // SIRADAKİ HADİSİ BUL
-    const { data: nextItem, error: itemError } = await supabase
-      .from('content_library')
+    // 2. DAHA ÖNCE GÖNDERİLMİŞ HADİS ID'LERİNİ ÇEK
+    const { data: sentLogs } = await supabase
+      .from('content_logs')
+      .select('content_id')
+      .eq('content_type', 'hadis');
+    
+    const sentIds = sentLogs?.map(log => log.content_id) || [];
+
+    // 3. SİZİN 'hadisler' TABLOSUNDAN GÖNDERİLMEMİŞ İLK HADİSİ ÇEK
+    // (id'ye göre sıralı)
+    const { data: nextHadis, error: hadisError } = await supabase
+      .from('hadisler')
       .select('*')
-      .eq('type', 'hadis')
-      .eq('is_sent', false)
-      .order('order_index', { ascending: true })
+      .not('id', 'in', `(${sentIds.join(',') || '0'})`)
+      .order('id', { ascending: true })
       .limit(1)
       .maybeSingle();
 
-    if (itemError || !nextItem) return NextResponse.json({ success: false, message: 'Gönderilecek yeni Hadis bulunamadı.' });
+    if (hadisError || !nextHadis) return NextResponse.json({ success: false, message: 'Gönderilecek yeni bir Hadis bulunamadı.' });
 
-    // KİŞİLERİ ÇEK
+    // 4. MESAJ METNİNİ OLUŞTUR (İstediğiniz Format)
+    // Ravi + Metin + Kaynak
+    const fullMessage = `${nextHadis.ravi}\n\n"${nextHadis.metin_turkce}"\n\n(Kaynak: ${nextHadis.kaynak})`;
+
+    // 5. ALICILARI ÇEK
     const { data: contacts, error: contactError } = await supabase
       .from('contacts')
       .select('full_name, primary_phone')
@@ -41,23 +53,22 @@ export async function GET() {
 
     if (contactError || !contacts || contacts.length === 0) return NextResponse.json({ success: false, message: 'Alıcı bulunamadı.' });
 
-    // SADECE GÜNLÜK VE ARŞİVE YAZ (DURUMU GÜNCELLEMEYİ n8n'e BIRAKIYORUZ)
+    // 6. GÜNLÜĞE YAZ
     const { data: logData } = await supabase.from('content_logs').insert([{
-      content_id: nextItem.id,
+      content_id: String(nextHadis.id),
       content_type: 'hadis',
       recipient_group_ids: auto.group_ids,
       recipient_count: contacts.length,
       sent_recipients: contacts
     }]).select().maybeSingle();
 
-    // n8n'e DÖNECEK VERİ
+    // 7. n8n'e DİREKT HAZIR METNİ DÖN
     return NextResponse.json({ 
       success: true, 
       action: 'HADIS_TETIKLENDI',
-      item_id: nextItem.id, // n8n bu ID'yi 'complete' API'sine gönderecek
-      content: nextItem.content,
-      narrator: nextItem.narrator,
-      source: nextItem.source,
+      item_id: String(nextHadis.id),
+      raw_content: nextHadis.metin_turkce,
+      formatted_message: fullMessage, // n8n'de direkt bu alanı kullanabilirsiniz
       recipients: contacts,
       log_id: logData?.id
     });
@@ -67,5 +78,4 @@ export async function GET() {
   }
 }
 
-// POST desteğini de koru (opsiyonel)
 export async function POST() { return GET(); }

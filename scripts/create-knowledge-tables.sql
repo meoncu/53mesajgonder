@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS content_library (
 -- Otomasyon Kuralları
 CREATE TABLE IF NOT EXISTS content_automation (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    content_type TEXT NOT NULL CHECK (content_type IN ('hadis', 'sunnet', 'ilmihal')),
-    group_ids UUID[] NOT NULL, -- Hedef Gruplar
+    content_type TEXT NOT NULL UNIQUE CHECK (content_type IN ('hadis', 'sunnet', 'ilmihal')),
+    group_ids TEXT[] NOT NULL, -- Hedef Gruplar
     schedule_day INTEGER, -- 0-6 (Pazar-Cumartesi)
     schedule_time TIME NOT NULL, -- 07:00:00
     is_active BOOLEAN DEFAULT TRUE,
@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS content_logs (
     content_id UUID REFERENCES content_library(id),
     content_type TEXT NOT NULL,
     sent_at TIMESTAMPTZ DEFAULT NOW(),
-    recipient_group_ids UUID[],
-    recipient_count INTEGER,
+    recipient_group_ids TEXT[] NOT NULL,
+    recipient_count INTEGER NOT NULL,
     sent_recipients JSONB -- [{name, phone}]
 );
 

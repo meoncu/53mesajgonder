@@ -8,7 +8,7 @@ const getSupabase = () => {
   return createClient(url, key);
 };
 
-export async function POST() {
+export async function GET() {
   const supabase = getSupabase();
   try {
     // SADECE 'hadis' OTOMASYONLARINI ÇEK
@@ -66,3 +66,6 @@ export async function POST() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// POST desteğini de koru (opsiyonel)
+export async function POST() { return GET(); }

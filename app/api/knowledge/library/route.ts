@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const getSupabase = () => {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+};
 
 export async function GET(request: Request) {
+  const supabase = getSupabase();
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') || 'hadis';
 
@@ -21,10 +24,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const supabase = getSupabase();
   const body = await request.json();
   const { type, content, narrator, source } = body;
 
-  // Sıradaki order_index'i bul (o türdeki en büyük + 1)
   const { data: lastItem } = await supabase
     .from('content_library')
     .select('order_index')
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    // Toplu veya tekil düzenleme için (Sıra değiştirme veya metin güncelleme)
+    const supabase = getSupabase();
     const body = await request.json();
     const { id, ...updates } = body;
 

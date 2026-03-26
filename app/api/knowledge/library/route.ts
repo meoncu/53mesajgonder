@@ -72,7 +72,7 @@ export async function GET(request: Request) {
   }
 }
 
-// YENİ EKLEME (POST)
+// POST
 export async function POST(request: Request) {
   const body = await request.json();
   const { content, narrator, source, type } = body;
@@ -83,25 +83,23 @@ export async function POST(request: Request) {
       const { data, error } = await supabase
         .from('hadisler')
         .insert([{ metin_turkce: content, ravi: narrator, kaynak: source }])
-        .select()
-        .maybeSingle(); 
+        .select();
       if (error) throw error;
-      return NextResponse.json(data);
+      return NextResponse.json(data?.[0] || {});
     } else {
       const { data, error } = await supabase
         .from('content_library')
         .insert([{ content, narrator, source, type, order_index: Date.now() / 1000 }])
-        .select()
-        .maybeSingle();
+        .select();
       if (error) throw error;
-      return NextResponse.json(data);
+      return NextResponse.json(data?.[0] || {});
     }
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// GÜNCELLEME (PATCH)
+// PATCH - GÜNCELLEME
 export async function PATCH(request: Request) {
   const body = await request.json();
   const { id, content, narrator, source, type } = body;
@@ -109,32 +107,32 @@ export async function PATCH(request: Request) {
 
   try {
     const numericId = parseInt(id);
-    if (isNaN(numericId) && type === 'hadis') throw new Error('Geçersiz ID formatı');
-
+    
     if (type === 'hadis') {
       const { data, error } = await supabase
         .from('hadisler')
         .update({ metin_turkce: content, ravi: narrator, kaynak: source })
         .eq('id', numericId)
-        .select()
-        .maybeSingle(); // Daha güvenli bir karşılama
+        .select();
 
       if (error) throw error;
-      if (!data) throw new Error(`ID: ${id} ile eşleşen kayıt veritabanında bulunamadı.`);
-      
-      return NextResponse.json(data);
+      // Eğer etkilenen satır yoksa hata dön
+      if (!data || data.length === 0) {
+        throw new Error(`Veritabanında ID:${id} olan kayıt bulunamadı, bu yüzden güncellenemedi.`);
+      }
+      return NextResponse.json(data[0]);
     } else {
       const { data, error } = await supabase
         .from('content_library')
         .update({ content, narrator, source })
         .eq('id', id)
-        .select()
-        .maybeSingle();
+        .select();
 
       if (error) throw error;
-      if (!data) throw new Error(`ID: ${id} ile eşleşen kayıt bulunamadı.`);
-
-      return NextResponse.json(data);
+      if (!data || data.length === 0) {
+        throw new Error(`ID:${id} olan kayıt bulunamadı.`);
+      }
+      return NextResponse.json(data[0]);
     }
   } catch (error: any) {
     console.error('Update Error:', error);

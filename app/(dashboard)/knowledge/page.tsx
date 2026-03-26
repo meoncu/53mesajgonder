@@ -247,82 +247,91 @@ export default function KnowledgePage() {
         </div>
       </div>
 
-      {/* LIBRARY LIST */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoading ? (
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-48 bg-gray-50 animate-pulse rounded-xl border border-gray-100" />
-          ))
-        ) : filteredItems.length === 0 ? (
-          <div className="col-span-full py-20 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-            <div className="bg-white p-6 rounded-2xl mb-4 shadow-sm border border-border text-gray-200 w-fit mx-auto">
-              <BookOpen size={48} strokeWidth={1} />
-            </div>
-            <p className="text-gray-500 font-medium font-outfit">Bu kategoride henüz kayıt girilmemiş.</p>
-          </div>
-        ) : (
-          filteredItems.map((item) => (
-            <div 
-              key={item.id}
-              className={`relative bg-white border rounded-xl p-5 shadow-sm transition-all hover:shadow-md hover:border-blue-100 group ${
-                item.is_sent ? 'opacity-60 grayscale-[0.5]' : 'border-border'
-              }`}
-            >
-              {/* STATUS BADGE */}
-              <div className="absolute top-4 right-4 flex items-center gap-1.5">
-                {item.is_sent ? (
-                  <span className="bg-green-50 text-green-600 px-2 py-0.5 rounded-full text-[9px] font-bold border border-green-100 flex items-center gap-1">
-                    <CheckCircle2 size={10} /> GÖNDERİLDİ
-                  </span>
-                ) : (
-                  <span className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full text-[9px] font-bold border border-orange-100">
-                    SIRADA
-                  </span>
-                )}
-              </div>
-
-              {/* ORDER NUMBER */}
-              <div className="text-[10px] font-bold text-blue-600 bg-blue-50 w-fit px-2 py-0.5 rounded-md mb-3 flex items-center gap-1">
-                <Hash size={10} /> {item.order_index}
-              </div>
-
-              {/* CONTENT */}
-              <div className="space-y-3 cursor-pointer" onClick={() => openEditModal(item)}>
-                <p className="text-sm font-semibold text-gray-900 leading-relaxed line-clamp-4 font-outfit">
-                  &quot;{item.content}&quot;
-                </p>
-                
-                <div className="flex flex-col gap-1.5 pt-2">
-                  {item.narrator && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-bold">
-                      <User size={12} className="text-gray-400" />
-                      {item.narrator}
-                    </div>
-                  )}
-                  {item.source && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-bold italic">
-                      <Bookmark size={12} className="text-gray-300" />
-                      {item.source}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* ACTION BUTTONS (HOVER) */}
-              <div className="absolute bottom-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button 
-                  onClick={() => openEditModal(item)}
-                  className="p-1.5 bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                >
-                  <Edit3 size={14} />
-                </button>
-                <button className="p-1.5 bg-gray-50 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-          ))
-        )}
+      {/* LIBRARY LIST - COMPACT VERSION */}
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50/50 border-b border-gray-100">
+                <th className="px-6 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-16">Sıra</th>
+                <th className="px-6 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-40">Durum</th>
+                <th className="px-6 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">İçerik</th>
+                <th className="px-6 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest w-48 text-right">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 font-outfit">
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td colSpan={4} className="px-6 py-4 h-12 bg-gray-50/50"></td>
+                  </tr>
+                ))
+              ) : filteredItems.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-20 text-center text-gray-400 italic">
+                    Bu kategoride henüz kayıt girilmemiş.
+                  </td>
+                </tr>
+              ) : (
+                filteredItems.map((item) => (
+                  <tr 
+                    key={item.id} 
+                    className={`hover:bg-gray-50/50 transition-colors group ${item.is_sent ? 'bg-gray-50/30' : ''}`}
+                  >
+                    <td className="px-6 py-4">
+                      <span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                        #{item.order_index}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {item.is_sent ? (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
+                          <CheckCircle2 size={10} /> GÖNDERİLDİ
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-black text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100">
+                          SIRADA
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 max-w-md">
+                      <div className="flex flex-col gap-0.5">
+                        <p className="text-xs font-bold text-gray-900 line-clamp-1 group-hover:line-clamp-none transition-all">
+                          &quot;{item.content}&quot;
+                        </p>
+                        <div className="flex items-center gap-3 opacity-60">
+                           {item.narrator && (
+                             <span className="text-[10px] flex items-center gap-1 font-bold">
+                               <User size={10} /> {item.narrator}
+                             </span>
+                           )}
+                           {item.source && (
+                             <span className="text-[10px] flex items-center gap-1 font-bold italic">
+                               <Bookmark size={10} /> {item.source}
+                             </span>
+                           )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => openEditModal(item)}
+                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-blue-100 transition-all shadow-sm"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-white rounded-lg border border-transparent hover:border-red-100 transition-all shadow-sm">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* MODAL - ADD/EDIT */}

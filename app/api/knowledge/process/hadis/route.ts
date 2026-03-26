@@ -10,72 +10,87 @@ const getSupabase = () => {
 
 export async function GET() {
   const supabase = getSupabase();
+
   try {
-    // 1. AKTİF HADİS OTOMASYONUNU ÇEK
-    const { data: auto, error: autoError } = await supabase
+    // 1. OTOMASYON AYARLARINI AL
+    const { data: automation, error: autoError } = await supabase
       .from('content_automation')
       .select('*')
-      .eq('is_active', true)
       .eq('content_type', 'hadis')
-      .maybeSingle();
+      .eq('is_active', true)
+      .single();
 
-    if (autoError || !auto) return NextResponse.json({ success: false, message: 'Aktif Hadis otomasyonu bulunamadı.' });
+    if (autoError || !automation) {
+      return NextResponse.json({ success: false, message: 'Aktif hadis otomasyonu bulunamadı.' });
+    }
 
-    // 2. DAHA ÖNCE GÖNDERİLMİŞ HADİS ID'LERİNİ ÇEK
-    const { data: sentLogs } = await supabase
+    // 2. DAHA ÖNCE GÖNDERİLMEYEN İLK HADİSİ BUL
+    const { data: logs } = await supabase
       .from('content_logs')
       .select('content_id')
       .eq('content_type', 'hadis');
     
-    const sentIds = sentLogs?.map(log => log.content_id) || [];
+    const sentIds = logs?.map(l => parseInt(l.content_id)) || [];
 
-    // 3. SİZİN 'hadisler' TABLOSUNDAN GÖNDERİLMEMİŞ İLK HADİSİ ÇEK
-    // (id'ye göre sıralı)
-    const { data: nextHadis, error: hadisError } = await supabase
+    const { data: nextHasith, error: hasithError } = await supabase
       .from('hadisler')
       .select('*')
-      .not('id', 'in', `(${sentIds.join(',') || '0'})`)
+      .not('id', 'in', `(${sentIds.length > 0 ? sentIds.join(',') : -1})`)
       .order('id', { ascending: true })
       .limit(1)
-      .maybeSingle();
+      .single();
 
-    if (hadisError || !nextHadis) return NextResponse.json({ success: false, message: 'Gönderilecek yeni bir Hadis bulunamadı.' });
+    if (hasithError || !nextHasith) {
+      return NextResponse.json({ success: false, message: 'Gönderilecek yeni hadis kalmadı.' });
+    }
 
-    // 4. MESAJ METNİNİ OLUŞTUR (İstediğiniz Format)
-    // Ravi + Metin + Kaynak
-    const fullMessage = `${nextHadis.ravi}\n\n"${nextHadis.metin_turkce}"\n\n(Kaynak: ${nextHadis.kaynak})`;
-
-    // 5. ALICILARI ÇEK
+    // 3. HEDEF GRUPLARDAKİ KİŞİLERİ BUL
     const { data: contacts, error: contactError } = await supabase
       .from('contacts')
       .select('full_name, primary_phone')
-      .overlaps('group_ids', auto.group_ids);
+      .contains('group_ids', automation.group_ids);
 
-    if (contactError || !contacts || contacts.length === 0) return NextResponse.json({ success: false, message: 'Alıcı bulunamadı.' });
+    if (contactError || !contacts || contacts.length === 0) {
+      return NextResponse.json({ success: false, message: 'Hedef gruplarda kayıtlı kimse bulunamadı.' });
+    }
 
-    // 6. GÜNLÜĞE YAZ
-    const { data: logData } = await supabase.from('content_logs').insert([{
-      content_id: String(nextHadis.id),
-      content_type: 'hadis',
-      recipient_group_ids: auto.group_ids,
-      recipient_count: contacts.length,
-      sent_recipients: contacts
-    }]).select().maybeSingle();
+    // 4. MESAJI FORMATLA (Ravi + Metin + Kaynak)
+    const formattedMessage = `*${nextHasith.ravi}* anlatıyor:\n\n"${nextHasith.metin_turkce}"\n\n(Kaynak: ${nextHasith.kaynak})`;
 
-    // 7. n8n'e DİREKT HAZIR METNİ DÖN
-    return NextResponse.json({ 
-      success: true, 
-      action: 'HADIS_TETIKLENDI',
-      item_id: String(nextHadis.id),
-      raw_content: nextHadis.metin_turkce,
-      formatted_message: fullMessage, // n8n'de direkt bu alanı kullanabilirsiniz
-      recipients: contacts,
-      log_id: logData?.id
+    // 5. GÖNDERİM KAYDI OLUŞTUR (is_sent: false kalsın, n8n tamamlayınca true olacak)
+    const { data: logRecord, error: logErr } = await supabase
+      .from('content_logs')
+      .insert([{
+        content_id: String(nextHasith.id),
+        content_type: 'hadis',
+        recipient_group_ids: automation.group_ids,
+        is_sent: false
+      }])
+      .select()
+      .single();
+
+    if (logErr) throw logErr;
+
+    // N8N WORKFLOW'UNA UYGUN TASARLANMIŞ LİSTE FORMATI
+    return NextResponse.json({
+      success: true,
+      items: [
+        {
+          item_id: nextHasith.id,
+          raw_content: nextHasith.metin_turkce,
+          formatted_message: formattedMessage,
+          contacts: contacts, // 'recipients' yerine 'contacts' yaptık
+          log_id: logRecord.id
+        }
+      ]
     });
 
   } catch (error: any) {
+    console.error('Hadis Process Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function POST() { return GET(); }
+export async function POST() {
+  return GET();
+}

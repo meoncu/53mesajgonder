@@ -91,7 +91,14 @@ export default function KnowledgePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload, content_type: activeType }),
       });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Kaydedilemedi');
+      }
       return res.json();
+    },
+    onError: (error: any) => {
+      alert('Otomasyon ayarları kaydedilirken hata: ' + error.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-automation'] });
@@ -106,7 +113,14 @@ export default function KnowledgePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload, type: activeType }),
       });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Eklenemedi');
+      }
       return res.json();
+    },
+    onError: (error: any) => {
+      alert('Kayıt eklenirken bir hata oluştu: ' + error.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-library'] });
@@ -116,12 +130,19 @@ export default function KnowledgePage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const res = await fetch(`/api/knowledge/library/${id}`, {
+      const res = await fetch(`/api/knowledge/library`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, id }),
       });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Güncellenemedi');
+      }
       return res.json();
+    },
+    onError: (error: any) => {
+      alert('Güncelleme sırasında bir hata oluştu: ' + error.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['knowledge-library'] });

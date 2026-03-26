@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS content_automation (
     is_active BOOLEAN DEFAULT TRUE,
     last_sent_at TIMESTAMPTZ,
     next_send_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Gönderim Arşivi

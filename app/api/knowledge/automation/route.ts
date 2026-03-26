@@ -34,8 +34,7 @@ export async function POST(request: Request) {
       group_ids,
       schedule_day,
       schedule_time,
-      is_active,
-      updated_at: new Date().toISOString()
+      is_active
     }, { onConflict: 'content_type' })
     .select()
     .single();

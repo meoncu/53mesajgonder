@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { 
   Search, Edit3, X, Trash2, Plus, 
   BookOpen, Hash, User, Bookmark, CheckCircle2, 
-  RefreshCcw, Settings, Clock, Users, ArrowRight
+  RefreshCcw, Settings, Clock, Users, ArrowRight,
+  ChevronLeft, ChevronRight, Filter
 } from 'lucide-react';
 
 type ContentType = 'hadis' | 'sunnet' | 'ilmihal';
@@ -43,15 +44,33 @@ export default function KnowledgePage() {
     is_active: true
   });
 
-  // Fetch Library Items
+  const [page, setPage] = useState(1);
+  const limit = 20;
+
+  // FETCH KNOWLEDGE LIBRARY - PAGINATED
   const { data, isLoading } = useQuery({
-    queryKey: ['knowledge-library', activeType],
+    queryKey: ['knowledge-library', activeType, page],
     queryFn: async () => {
-      const res = await fetch(`/api/knowledge/library?type=${activeType}`);
+      const res = await fetch(`/api/knowledge/library?type=${activeType}&page=${page}&limit=${limit}`);
       if (!res.ok) throw new Error('Yüklenemedi');
       return res.json();
     }
   });
+
+  const pagination = data?.pagination || { total: 0, totalPages: 1 };
+  const items: ContentItem[] = data?.items || [];
+
+  // Reset page when type changes
+  useEffect(() => {
+    setPage(1);
+  }, [activeType]);
+
+  const jumpToNext = () => {
+    const nextItem = items.find(i => !i.is_sent);
+    if (!nextItem) {
+      alert('Sıradaki gönderilecek bu sayfada değil veya tümü tamamlanmış.');
+    }
+  };
 
   // Fetch Groups for Automation
   const { data: groupsData } = useQuery({
@@ -82,7 +101,6 @@ export default function KnowledgePage() {
   });
 
   const groups = groupsData?.items || [];
-  const items: ContentItem[] = data?.items || [];
 
   const automationMutation = useMutation({
     mutationFn: async (payload: any) => {
@@ -357,6 +375,58 @@ export default function KnowledgePage() {
               )}
             </tbody>
           </table>
+
+          {/* PAGINATION CONTROLS */}
+          {!isLoading && pagination.totalPages > 1 && (
+            <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 font-outfit">
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                TOPLAM {pagination.total} KAYITTAN {(page - 1) * limit + 1} - {Math.min(page * limit, pagination.total)} ARASI GÖSTERİLİYOR
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <Button 
+                  disabled={page === 1}
+                  onClick={() => setPage(p => p - 1)}
+                  className="h-9 px-3 bg-white text-gray-700 hover:bg-gray-100 border-gray-200 rounded-lg text-xs font-bold"
+                >
+                  <ChevronLeft size={16} />
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {[...Array(Math.min(5, pagination.totalPages))].map((_, i) => {
+                    let pageNum = page;
+                    if (page <= 3) pageNum = i + 1;
+                    else if (page >= pagination.totalPages - 2) pageNum = pagination.totalPages - 4 + i;
+                    else pageNum = page - 2 + i;
+
+                    if (pageNum <= 0 || pageNum > pagination.totalPages) return null;
+
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
+                          page === pageNum 
+                            ? 'bg-blue-600 text-white shadow-md' 
+                            : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-100 shadow-sm'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <Button 
+                  disabled={page === pagination.totalPages}
+                  onClick={() => setPage(p => p + 1)}
+                  className="h-9 px-3 bg-white text-gray-700 hover:bg-gray-100 border-gray-200 rounded-lg text-xs font-bold"
+                >
+                  <ChevronRight size={16} />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

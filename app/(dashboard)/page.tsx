@@ -38,6 +38,14 @@ export default function DashboardPage() {
     },
   });
 
+  const { data: autoData } = useQuery({
+    queryKey: ['knowledge-automation'],
+    queryFn: async () => {
+      const res = await fetch('/api/knowledge/automation');
+      return res.json();
+    },
+  });
+
   const stats = [
     { 
       label: 'Toplam Kişi', 
@@ -54,9 +62,9 @@ export default function DashboardPage() {
       trend: '+2'
     },
     { 
-      label: 'Aktif Kampanya', 
-      value: (campaignsData?.items || []).filter((c: Campaign) => c.status === 'scheduled' || c.status === 'processing').length || 0, 
-      icon: Share2,
+      label: 'Otomatik Akış', 
+      value: (autoData?.items || []).filter((a: any) => a.is_active).length || 0, 
+      icon: RefreshCw,
       color: 'green',
       trend: 'Aktif'
     },
@@ -125,42 +133,81 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent Campaigns */}
-        <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+        <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm overflow-hidden relative">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2.5">
               <div className="bg-blue-600 p-2 rounded-xl text-white shadow-md">
                 <MessageSquare size={16} />
               </div>
-              <h2 className="text-lg font-bold text-gray-900">Son Kampanyalar</h2>
+              <h2 className="text-lg font-bold text-gray-900 font-outfit">Kampanyalar</h2>
             </div>
             <button className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 group">
-              Tümünü Gör <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"/>
+              Hepsi <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"/>
             </button>
           </div>
 
           <div className="space-y-3">
-            {(campaignsData?.items || []).slice(0, 4).map((item: Campaign) => (
+            {(campaignsData?.items || []).slice(0, 3).map((item: Campaign) => (
               <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-50 hover:bg-gray-50 transition-colors">
                 <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 uppercase font-bold text-[10px]">
                   {item.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-gray-900 truncate">{item.name}</p>
-                  <p className="text-[9px] text-gray-400 font-medium">Bitiş: {item.status === 'scheduled' ? 'Bekliyor' : 'Tamamlandı'}</p>
+                  <p className="text-[9px] text-gray-400 font-medium">{item.status === 'scheduled' ? 'Zamanlandı' : 'Tamamlandı'}</p>
                 </div>
-                <div className="text-right">
-                  <span className={cn(
-                    "inline-block px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border",
-                    item.status === 'scheduled' ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-green-50 text-green-600 border-green-100"
-                  )}>
-                    {item.status}
-                  </span>
-                </div>
+                <span className={cn(
+                  "px-2 py-0.5 rounded-md text-[9px] font-bold border",
+                  item.status === 'scheduled' ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-green-50 text-green-600 border-green-100"
+                )}>
+                  {item.status.toUpperCase()}
+                </span>
               </div>
             ))}
-            {!campaignsData?.items?.length && (
-              <div className="py-20 text-center text-gray-400">
-                <p className="text-sm font-medium">Kayıtlı kampanya bulunamadı.</p>
+          </div>
+        </div>
+
+        {/* Islamic Content Automation Status */}
+        <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2.5">
+              <div className="bg-emerald-600 p-2 rounded-xl text-white shadow-md">
+                <Clock size={16} />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 font-outfit">Sıradaki Otomatik Gönderimler</h2>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {(autoData?.items || []).length > 0 ? (autoData?.items || []).map((auto: any) => {
+              const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+              return (
+                <div key={auto.id} className="p-4 rounded-xl bg-gray-50/50 border border-gray-100 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                       <span className="text-[11px] font-bold text-gray-900 uppercase tracking-wider">{auto.content_type}</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                      {days[auto.schedule_day]} {auto.schedule_time.slice(0, 5)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-100 mt-1">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Target API</span>
+                      <span className="text-[10px] font-mono font-bold text-gray-600">/api/knowledge/process</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Workflow</span>
+                      <span className="text-[10px] font-mono font-bold text-blue-600">sch_knowledge_send</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }) : (
+              <div className="py-12 text-center text-gray-400">
+                <p className="text-[10px] font-bold uppercase tracking-widest">Henüz otomasyon kuralı tanımlanmadı.</p>
               </div>
             )}
           </div>

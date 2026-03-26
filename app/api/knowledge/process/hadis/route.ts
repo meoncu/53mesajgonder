@@ -41,8 +41,7 @@ export async function POST() {
 
     if (contactError || !contacts || contacts.length === 0) return NextResponse.json({ success: false, message: 'Alıcı bulunamadı.' });
 
-    // DURUMU GÜNCELLE VE ARŞİVE YAZ
-    await supabase.from('content_library').update({ is_sent: true }).eq('id', nextItem.id);
+    // SADECE GÜNLÜK VE ARŞİVE YAZ (DURUMU GÜNCELLEMEYİ n8n'e BIRAKIYORUZ)
     const { data: logData } = await supabase.from('content_logs').insert([{
       content_id: nextItem.id,
       content_type: 'hadis',
@@ -55,6 +54,7 @@ export async function POST() {
     return NextResponse.json({ 
       success: true, 
       action: 'HADIS_TETIKLENDI',
+      item_id: nextItem.id, // n8n bu ID'yi 'complete' API'sine gönderecek
       content: nextItem.content,
       narrator: nextItem.narrator,
       source: nextItem.source,

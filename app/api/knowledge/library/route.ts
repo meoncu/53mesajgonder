@@ -26,6 +26,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const supabase = getSupabase();
   const body = await request.json();
+  console.log('Knowledge POST Request:', body);
   const { type, content, narrator, source } = body;
 
   const { data: lastItem } = await supabase
@@ -51,7 +52,10 @@ export async function POST(request: Request) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('Knowledge POST Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json(data);
 }
 

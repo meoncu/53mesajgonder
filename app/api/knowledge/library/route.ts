@@ -22,14 +22,9 @@ export async function GET(request: Request) {
     let formatted: any[] = [];
 
     if (type === 'hadis') {
-      // TOPLAM SAYIYI AL (Sayfalama için)
-      const { count } = await supabase
-        .from('hadisler')
-        .select('*', { count: 'exact', head: true });
-      
+      const { count } = await supabase.from('hadisler').select('*', { count: 'exact', head: true });
       totalCount = count || 0;
 
-      // SADECE İLGİLİ SAYFAYI ÇEK
       const { data: hadisler, error } = await supabase
         .from('hadisler')
         .select('*')
@@ -38,7 +33,6 @@ export async function GET(request: Request) {
 
       if (error) throw error;
 
-      // GÖNDERİLENLERİ TAKİP ETMEK İÇİN LOGLARI O SAYFA ÖZELİNDE KONTROL ET
       const currentIds = hadisler.map((h: any) => String(h.id));
       const { data: logs } = await supabase
         .from('content_logs')
@@ -57,13 +51,8 @@ export async function GET(request: Request) {
         is_sent: sentIds.has(String(h.id)),
         order_index: h.id
       }));
-
     } else {
-      const { count } = await supabase
-        .from('content_library')
-        .select('*', { count: 'exact', head: true })
-        .eq('type', type);
-      
+      const { count } = await supabase.from('content_library').select('*', { count: 'exact', head: true }).eq('type', type);
       totalCount = count || 0;
 
       const { data, error } = await supabase
@@ -77,45 +66,74 @@ export async function GET(request: Request) {
       formatted = data;
     }
 
-    return NextResponse.json({ 
-      items: formatted,
-      pagination: {
-        total: totalCount,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount / limit)
-      }
-    });
-
+    return NextResponse.json({ items: formatted, pagination: { total: totalCount, page, limit, totalPages: Math.ceil(totalCount / limit) } });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// POST, PATCH, DELETE metotları aynı kalıyor
+// YENİ EKLEME (POST)
 export async function POST(request: Request) {
   const body = await request.json();
+  const { content, narrator, source, type } = body;
   const supabase = getSupabase();
-  const { data, error } = await supabase.from('content_library').insert([body]).select().single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
-}
 
-export async function PATCH(request: Request) {
-  const body = await request.json();
-  const { id, content, narrator, source, type } = body;
-  const supabase = getSupabase();
+  console.log('Inserting content:', { type, content });
+
   try {
     if (type === 'hadis') {
-      const { data, error } = await supabase.from('hadisler').update({ metin_turkce: content, ravi: narrator, kaynak: source }).eq('id', parseInt(id)).select().single();
+      const { data, error } = await supabase
+        .from('hadisler')
+        .insert([{ metin_turkce: content, ravi: narrator, kaynak: source }])
+        .select()
+        .single();
       if (error) throw error;
       return NextResponse.json(data);
     } else {
-      const { data, error } = await supabase.from('content_library').update({ content, narrator, source }).eq('id', id).select().single();
+      const { data, error } = await supabase
+        .from('content_library')
+        .insert([{ content, narrator, source, type, order_index: Date.now() / 1000 }])
+        .select()
+        .single();
       if (error) throw error;
       return NextResponse.json(data);
     }
   } catch (error: any) {
+    console.error('Insert Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// GÜNCELLEME (PATCH)
+export async function PATCH(request: Request) {
+  const body = await request.json();
+  const { id, content, narrator, source, type } = body;
+  const supabase = getSupabase();
+
+  console.log('Patching record:', { id, type });
+
+  try {
+    if (type === 'hadis') {
+      const { data, error } = await supabase
+        .from('hadisler')
+        .update({ metin_turkce: content, ravi: narrator, kaynak: source })
+        .eq('id', parseInt(id))
+        .select()
+        .single();
+      if (error) throw error;
+      return NextResponse.json(data);
+    } else {
+      const { data, error } = await supabase
+        .from('content_library')
+        .update({ content, narrator, source })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return NextResponse.json(data);
+    }
+  } catch (error: any) {
+    console.error('Update Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

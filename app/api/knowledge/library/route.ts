@@ -13,15 +13,22 @@ export async function GET(request: Request) {
   const type = searchParams.get('type') || 'hadis';
   const supabase = getSupabase();
 
+  console.log('Fetching Library for type:', type);
+
   try {
     if (type === 'hadis') {
-      // SİZİN ÖZEL 'hadisler' TABLONUZDAN ÇEK
-      const { data: hadisler, error } = await supabase
+      // DİKKAT: 'hadisler' tablosunda id sütunu int8 olduğu için sıralama id bazlı
+      const { data: hadisler, error: hadisError } = await supabase
         .from('hadisler')
         .select('*')
         .order('id', { ascending: true });
 
-      if (error) throw error;
+      if (hadisError) {
+        console.error('Hadisler Table Fetch Error:', hadisError);
+        throw hadisError;
+      }
+
+      console.log('Hadis count from DB:', hadisler?.length || 0);
 
       // GÖNDERİLENLERİ TAKİP ETMEK İÇİN LOGLARI DA ÇEKELİM
       const { data: logs } = await supabase
@@ -31,7 +38,6 @@ export async function GET(request: Request) {
       
       const sentIds = new Set(logs?.map(l => String(l.content_id)) || []);
 
-      // BİZİM ARAYÜZE UYGUN FORMATTA DÖNÜŞTÜR
       const formatted = hadisler.map((h: any) => ({
         id: String(h.id),
         content: h.metin_turkce,
@@ -39,12 +45,11 @@ export async function GET(request: Request) {
         source: h.kaynak,
         type: 'hadis',
         is_sent: sentIds.has(String(h.id)),
-        order_index: h.id // id'yi sıra numarası olarak kullanıyoruz
+        order_index: h.id
       }));
 
-      return NextResponse.json(formatted);
+      return NextResponse.json({ items: formatted });
     } else {
-      // DİĞERLERİ (Sünnet, İlmihal) NORMAL KÜTÜPHANEDEN GELSİN
       const { data, error } = await supabase
         .from('content_library')
         .select('*')
@@ -52,15 +57,14 @@ export async function GET(request: Request) {
         .order('order_index', { ascending: true });
 
       if (error) throw error;
-      return NextResponse.json(data);
+      return NextResponse.json({ items: data });
     }
   } catch (error: any) {
+    console.error('Total API Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// POST, PUT, DELETE metotları (Sadece content_library için kalabilir)
-// Ancak Hadis eklerken/silirken sizin hadisler tablosuna da yazabiliriz isterseniz.
 export async function POST(request: Request) {
   const body = await request.json();
   const supabase = getSupabase();

@@ -41,7 +41,9 @@ export default function KnowledgePage() {
     schedule_day: 5, // Cuma varsayılan
     schedule_time: '07:00',
     group_ids: [] as string[],
-    is_active: true
+    is_active: true,
+    is_test_mode: false,
+    test_schedules: [] as {day: number, time: string}[]
   });
 
   const [page, setPage] = useState(1);
@@ -93,7 +95,9 @@ export default function KnowledgePage() {
           schedule_day: current.schedule_day,
           schedule_time: current.schedule_time.slice(0, 5),
           group_ids: current.group_ids || [],
-          is_active: current.is_active
+          is_active: current.is_active,
+          is_test_mode: current.is_test_mode || false,
+          test_schedules: current.test_schedules || []
         });
       }
       return current;
@@ -579,7 +583,91 @@ export default function KnowledgePage() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              {/* TEST MODE TOGGLE & SECTIONS */}
+              <div className="pt-4 border-t border-gray-100 space-y-4">
+                <div className="flex items-center justify-between p-4 bg-orange-50/50 border border-orange-100 rounded-xl">
+                  <div>
+                    <h4 className="text-sm font-bold text-orange-800 flex items-center gap-2">
+                      <Clock size={16} /> Test Sistemi
+                    </h4>
+                    <p className="text-xs text-orange-600/80 mt-1 font-medium">Test modu aktif olduğunda normal zamanlama yoksayılır.</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={autoFormData.is_test_mode}
+                      onChange={(e) => setAutoFormData(prev => ({ ...prev, is_test_mode: e.target.checked }))}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
+                  </label>
+                </div>
+
+                {autoFormData.is_test_mode && (
+                  <div className="space-y-3 p-4 bg-orange-50/30 rounded-xl border border-orange-100/50">
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 space-y-1.5">
+                        <label className="block text-[10px] font-bold text-orange-600/70 uppercase">Test Günü</label>
+                        <select id="testDayInput" className="w-full px-3 py-2 bg-white border border-orange-200 rounded-lg outline-none text-xs font-bold h-9 text-orange-900">
+                          <option value={1}>Pazartesi</option>
+                          <option value={2}>Salı</option>
+                          <option value={3}>Çarşamba</option>
+                          <option value={4}>Perşembe</option>
+                          <option value={5}>Cuma</option>
+                          <option value={6}>Cumartesi</option>
+                          <option value={0}>Pazar</option>
+                        </select>
+                      </div>
+                      <div className="flex-1 space-y-1.5">
+                        <label className="block text-[10px] font-bold text-orange-600/70 uppercase">Test Saati</label>
+                        <input id="testTimeInput" type="time" defaultValue="14:00" className="w-full px-3 py-2 bg-white border border-orange-200 rounded-lg outline-none text-xs font-bold h-9 text-orange-900" />
+                      </div>
+                      <Button 
+                        onClick={() => {
+                          const dayInput = document.getElementById('testDayInput') as HTMLSelectElement;
+                          const timeInput = document.getElementById('testTimeInput') as HTMLInputElement;
+                          const day = parseInt(dayInput.value);
+                          const time = timeInput.value;
+                          if (time) {
+                            setAutoFormData(prev => ({
+                              ...prev,
+                              test_schedules: [...prev.test_schedules, { day, time }]
+                            }));
+                          }
+                        }}
+                        className="h-9 px-4 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg text-xs"
+                      >
+                        EKLE
+                      </Button>
+                    </div>
+
+                    {autoFormData.test_schedules.length > 0 && (
+                      <div className="flex flex-col gap-2 mt-3 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                        {autoFormData.test_schedules.map((schedule, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-orange-100 shadow-sm">
+                            <span className="text-xs font-bold text-orange-900 flex items-center gap-2">
+                              {['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'][schedule.day]} 
+                              <span className="text-orange-500 opacity-50 px-1">•</span> 
+                              {schedule.time}
+                            </span>
+                            <button 
+                              onClick={() => setAutoFormData(prev => ({
+                                ...prev,
+                                test_schedules: prev.test_schedules.filter((_, i) => i !== idx)
+                              }))}
+                              className="text-orange-400 hover:text-red-600 p-1"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5 pt-4 border-t border-gray-100">
                 <label className="block text-[11px] font-bold text-gray-400 uppercase">Hedef Gruplar</label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
                   {groups.map((group: any) => (

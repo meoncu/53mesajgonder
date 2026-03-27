@@ -25,7 +25,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const supabase = getSupabase();
   const body = await request.json();
-  const { content_type, group_ids, schedule_day, schedule_time, is_active } = body;
+  const { content_type, group_ids, schedule_day, schedule_time, is_active, is_test_mode, test_schedules } = body;
 
   const { data, error } = await supabase
     .from('content_automation')
@@ -34,7 +34,9 @@ export async function POST(request: Request) {
       group_ids,
       schedule_day,
       schedule_time,
-      is_active
+      is_active,
+      is_test_mode: is_test_mode || false,
+      test_schedules: test_schedules || []
     }, { onConflict: 'content_type' })
     .select()
     .single();

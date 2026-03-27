@@ -24,6 +24,33 @@ export async function GET() {
       return NextResponse.json({ success: false, message: 'Aktif hadis otomasyonu bulunamadı.' });
     }
 
+    // 1.5 ZAMAN KONTROLÜ (TÜRKİYE SAATİ İLE)
+    const now = new Date();
+    const istanbulTimeString = now.toLocaleString("en-US", { timeZone: "Europe/Istanbul", hour12: false });
+    const istanbulDate = new Date(istanbulTimeString);
+    
+    const currentDay = istanbulDate.getDay(); // 0: Pazar, 1: Pzt ... 6: Cts
+    const currentHour = String(istanbulDate.getHours()).padStart(2, '0');
+    const currentMinute = String(istanbulDate.getMinutes()).padStart(2, '0');
+    const currentTime = `${currentHour}:${currentMinute}`;
+
+    let shouldSend = false;
+
+    if (automation.is_test_mode && automation.test_schedules && automation.test_schedules.length > 0) {
+      // TEST MODU
+      shouldSend = automation.test_schedules.some((s: any) => s.day === currentDay && s.time === currentTime);
+      if (!shouldSend) {
+        return NextResponse.json({ success: false, message: `Test modundasınız. Mevcut zaman (${currentDay} ${currentTime}) tanımlı test zamanlarıyla uyuşmuyor.` });
+      }
+    } else {
+      // NORMAL MOD
+      const dbTime = automation.schedule_time?.slice(0, 5); // "07:00:00" -> "07:00"
+      shouldSend = (automation.schedule_day === currentDay && dbTime === currentTime);
+      if (!shouldSend) {
+         return NextResponse.json({ success: false, message: `Şu an normal gönderim zamanı değil. Planlanan: (${automation.schedule_day} ${dbTime}), Mevcut: (${currentDay} ${currentTime})` });
+      }
+    }
+
     // 2. DAHA ÖNCE GÖNDERİLMEYEN İLK HADİSİ BUL
     const { data: logs } = await supabase
       .from('content_logs')

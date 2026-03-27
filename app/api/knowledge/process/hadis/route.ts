@@ -15,16 +15,19 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const forceSend = searchParams.get('force') === 'true';
 
-    // 1. OTOMASYON AYARLARINI AL
     const { data: automation, error: autoError } = await supabase
       .from('content_automation')
       .select('*')
       .eq('content_type', 'hadis')
-      .eq('is_active', true)
       .single();
 
     if (autoError || !automation) {
-      return NextResponse.json({ success: false, message: 'Aktif hadis otomasyonu bulunamadı.' });
+      return NextResponse.json({ success: false, message: 'Hadis otomasyon ayarları bulunamadı.' });
+    }
+
+    // Aktiflik kontrolü (Test Modunda değilse, mutlaka Aktif olmalı)
+    if (!automation.is_active && !automation.is_test_mode) {
+      return NextResponse.json({ success: false, message: 'Aktif hadis otomasyonu bulunamadı (Durum: PASİF).' });
     }
 
     // 1.5 ZAMAN KONTROLÜ (TÜRKİYE SAATİ İLE)

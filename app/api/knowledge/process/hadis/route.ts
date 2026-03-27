@@ -8,10 +8,13 @@ const getSupabase = () => {
   return createClient(url, key);
 };
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = getSupabase();
 
   try {
+    const { searchParams } = new URL(request.url);
+    const forceSend = searchParams.get('force') === 'true';
+
     // 1. OTOMASYON AYARLARINI AL
     const { data: automation, error: autoError } = await supabase
       .from('content_automation')
@@ -36,18 +39,20 @@ export async function GET() {
 
     let shouldSend = false;
 
-    if (automation.is_test_mode && automation.test_schedules && automation.test_schedules.length > 0) {
-      // TEST MODU
-      shouldSend = automation.test_schedules.some((s: any) => s.day === currentDay && s.time === currentTime);
-      if (!shouldSend) {
-        return NextResponse.json({ success: false, message: `Test modundasınız. Mevcut zaman (${currentDay} ${currentTime}) tanımlı test zamanlarıyla uyuşmuyor.` });
-      }
-    } else {
-      // NORMAL MOD
-      const dbTime = automation.schedule_time?.slice(0, 5); // "07:00:00" -> "07:00"
-      shouldSend = (automation.schedule_day === currentDay && dbTime === currentTime);
-      if (!shouldSend) {
-         return NextResponse.json({ success: false, message: `Şu an normal gönderim zamanı değil. Planlanan: (${automation.schedule_day} ${dbTime}), Mevcut: (${currentDay} ${currentTime})` });
+    if (!forceSend) {
+      if (automation.is_test_mode && automation.test_schedules && automation.test_schedules.length > 0) {
+        // TEST MODU
+        shouldSend = automation.test_schedules.some((s: any) => s.day === currentDay && s.time === currentTime);
+        if (!shouldSend) {
+          return NextResponse.json({ success: false, message: `Test modundasınız. Mevcut zaman (${currentDay} ${currentTime}) tanımlı test zamanlarıyla uyuşmuyor.` });
+        }
+      } else {
+        // NORMAL MOD
+        const dbTime = automation.schedule_time?.slice(0, 5); // "07:00:00" -> "07:00"
+        shouldSend = (automation.schedule_day === currentDay && dbTime === currentTime);
+        if (!shouldSend) {
+           return NextResponse.json({ success: false, message: `Şu an normal gönderim zamanı değil. Planlanan: (${automation.schedule_day} ${dbTime}), Mevcut: (${currentDay} ${currentTime})` });
+        }
       }
     }
 
@@ -118,6 +123,6 @@ export async function GET() {
   }
 }
 
-export async function POST() {
-  return GET();
+export async function POST(request: Request) {
+  return GET(request);
 }

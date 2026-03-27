@@ -513,13 +513,13 @@ export default function KnowledgePage() {
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 flex flex-col gap-1">
               <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">GÜN & SAAT</span>
               <span className="text-sm font-bold flex items-center gap-2">
-                <Clock size={14} /> CUMA 07:00
+                <Clock size={14} /> {['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'][autoFormData.schedule_day]} {autoFormData.schedule_time}
               </span>
             </div>
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 flex flex-col gap-1">
               <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">HEDEF GRUPLAR</span>
               <span className="text-sm font-bold flex items-center gap-2">
-                <Users size={14} /> 2 GRUP
+                <Users size={14} /> {autoFormData.group_ids.length} GRUP
               </span>
             </div>
           </div>

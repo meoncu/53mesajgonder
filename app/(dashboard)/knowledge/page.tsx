@@ -764,7 +764,22 @@ export default function KnowledgePage() {
                   {typeLabels[activeType]} Gönderim & Test Takip
                 </h3>
               </div>
-              <button onClick={() => setIsLogsModalOpen(false)} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400"><X size={18} /></button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={async () => {
+                    if (confirm('Tüm gönderim sırası silinecek ve hadisler baştan gönderilmeye başlayacak. Test için onaylıyor musunuz?')) {
+                      await fetch(`/api/knowledge/logs?type=${activeType}`, { method: 'DELETE' });
+                      queryClient.invalidateQueries({ queryKey: ['knowledge-library'] });
+                      setIsLogsModalOpen(false);
+                      setPage(1);
+                    }
+                  }} 
+                  className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 h-8 px-3 text-[10px] font-bold tracking-wider uppercase rounded-lg shadow-sm"
+                >
+                   <Trash2 size={14} className="mr-1 inline-block" /> Sıfırla
+                </Button>
+                <button onClick={() => setIsLogsModalOpen(false)} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400"><X size={18} /></button>
+              </div>
             </div>
             
             <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">

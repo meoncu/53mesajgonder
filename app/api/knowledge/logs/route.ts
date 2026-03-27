@@ -29,3 +29,22 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  const supabase = getSupabase();
+  const { searchParams } = new URL(request.url);
+  const type = searchParams.get('type') || 'hadis';
+
+  try {
+    const { error } = await supabase
+      .from('content_logs')
+      .delete()
+      .eq('content_type', type);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true, message: 'Loglar temizlendi ve kütüphane sıfırlandı.' });
+  } catch (error: any) {
+    console.error('Logs Delete Error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

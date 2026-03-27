@@ -29,6 +29,9 @@ export default function KnowledgePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
+  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [logsData, setLogsData] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
   
   const [formData, setFormData] = useState({
@@ -48,6 +51,19 @@ export default function KnowledgePage() {
 
   const [page, setPage] = useState(1);
   const limit = 20;
+
+  useEffect(() => {
+    if (isLogsModalOpen) {
+      setLogsLoading(true);
+      fetch(`/api/knowledge/logs?type=${activeType}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) setLogsData(d.items);
+          setLogsLoading(false);
+        })
+        .catch(() => setLogsLoading(false));
+    }
+  }, [isLogsModalOpen, activeType]);
 
   // FETCH KNOWLEDGE LIBRARY - PAGINATED
   const { data, isLoading } = useQuery({
@@ -528,13 +544,22 @@ export default function KnowledgePage() {
             </div>
           </div>
           
-          <Button 
-            onClick={() => setIsAutomationModalOpen(true)}
-            className="relative z-10 h-14 px-8 bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl shadow-lg flex items-center gap-2"
-          >
-            OTOMASYON AYARLARINI YÖNET
-            <ArrowRight size={18} />
-          </Button>
+          <div className="relative z-10 flex gap-3 flex-wrap">
+            <Button 
+              onClick={() => setIsLogsModalOpen(true)}
+              className="h-14 px-6 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl shadow-lg flex items-center gap-2 border border-white/20"
+            >
+              <RefreshCcw size={18} />
+              GÖNDERİM LOGLARI
+            </Button>
+            <Button 
+              onClick={() => setIsAutomationModalOpen(true)}
+              className="h-14 px-8 bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl shadow-lg flex items-center gap-2"
+            >
+              OTOMASYON AYARLARINI YÖNET
+              <ArrowRight size={18} />
+            </Button>
+          </div>
 
           {/* ... decorative elements ... */}
         </div>
@@ -728,6 +753,56 @@ export default function KnowledgePage() {
           animation: spin-slow 8s linear infinite;
         }
       `}</style>
+      {/* MODAL - LOGS */}
+      {isLogsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 border border-gray-100 font-outfit max-h-[85vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <RefreshCcw size={18} className="text-blue-600" />
+                <h3 className="text-base font-bold text-gray-900">
+                  {typeLabels[activeType]} Gönderim & Test Takip
+                </h3>
+              </div>
+              <button onClick={() => setIsLogsModalOpen(false)} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-400"><X size={18} /></button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
+              {logsLoading ? (
+                <div className="text-center py-10 text-gray-400 text-sm font-bold">Yükleniyor...</div>
+              ) : logsData.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 text-sm font-medium">Henüz hiçbir gönderim veya test kaydı yok.</div>
+              ) : (
+                <div className="space-y-3">
+                  {logsData.map((log) => (
+                    <div key={log.id} className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm flex items-start gap-4">
+                      <div className={`mt-1 p-2 rounded-full ${log.is_sent ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+                        {log.is_sent ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-500">İçerik ID: {log.content_id}</span>
+                          <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-md">
+                            {new Date(log.created_at).toLocaleString('tr-TR')}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-sm font-medium text-gray-800">
+                          {log.is_sent ? (
+                            <span className="text-green-600 font-bold">N8N Tarafından İletildi</span>
+                          ) : (
+                            <span className="text-orange-500 font-bold">Sıraya Alındı (N8N Bekleniyor)</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -43,7 +43,7 @@ export default function KnowledgePage() {
     group_ids: [] as string[],
     is_active: true,
     is_test_mode: false,
-    test_schedules: [] as {day: number, time: string}[]
+    test_schedules: [] as {date: string, time: string}[]
   });
 
   const [page, setPage] = useState(1);
@@ -583,6 +583,20 @@ export default function KnowledgePage() {
                 </div>
               </div>
 
+              {/* DURUM TOGGLE (YUKARIYA TAŞINDI) */}
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100 mb-4 mt-4">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-blue-700">Durum: {autoFormData.is_active ? 'AKTİF' : 'PASİF'}</span>
+                  <p className="text-[10px] text-blue-500 font-medium">Bu içeriklerin otomatik gönderimi açık kalsın mı?</p>
+                </div>
+                <button 
+                  onClick={() => setAutoFormData({ ...autoFormData, is_active: !autoFormData.is_active })}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoFormData.is_active ? 'bg-blue-600' : 'bg-gray-200'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoFormData.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+
               {/* TEST MODE TOGGLE & SECTIONS */}
               <div className="pt-4 border-t border-gray-100 space-y-4">
                 <div className="flex items-center justify-between p-4 bg-orange-50/50 border border-orange-100 rounded-xl">
@@ -607,16 +621,8 @@ export default function KnowledgePage() {
                   <div className="space-y-3 p-4 bg-orange-50/30 rounded-xl border border-orange-100/50">
                     <div className="flex items-end gap-2">
                       <div className="flex-1 space-y-1.5">
-                        <label className="block text-[10px] font-bold text-orange-600/70 uppercase">Test Günü</label>
-                        <select id="testDayInput" className="w-full px-3 py-2 bg-white border border-orange-200 rounded-lg outline-none text-xs font-bold h-9 text-orange-900">
-                          <option value={1}>Pazartesi</option>
-                          <option value={2}>Salı</option>
-                          <option value={3}>Çarşamba</option>
-                          <option value={4}>Perşembe</option>
-                          <option value={5}>Cuma</option>
-                          <option value={6}>Cumartesi</option>
-                          <option value={0}>Pazar</option>
-                        </select>
+                        <label className="block text-[10px] font-bold text-orange-600/70 uppercase">Test Tarihi</label>
+                        <input id="testDateInput" type="date" defaultValue={new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' })} className="w-full px-3 py-2 bg-white border border-orange-200 rounded-lg outline-none text-xs font-bold h-9 text-orange-900" />
                       </div>
                       <div className="flex-1 space-y-1.5">
                         <label className="block text-[10px] font-bold text-orange-600/70 uppercase">Test Saati</label>
@@ -624,14 +630,14 @@ export default function KnowledgePage() {
                       </div>
                       <Button 
                         onClick={() => {
-                          const dayInput = document.getElementById('testDayInput') as HTMLSelectElement;
+                          const dateInput = document.getElementById('testDateInput') as HTMLInputElement;
                           const timeInput = document.getElementById('testTimeInput') as HTMLInputElement;
-                          const day = parseInt(dayInput.value);
+                          const date = dateInput.value;
                           const time = timeInput.value;
-                          if (time) {
+                          if (date && time) {
                             setAutoFormData(prev => ({
                               ...prev,
-                              test_schedules: [...prev.test_schedules, { day, time }]
+                              test_schedules: [...prev.test_schedules, { date, time }]
                             }));
                           }
                         }}
@@ -643,10 +649,12 @@ export default function KnowledgePage() {
 
                     {autoFormData.test_schedules.length > 0 && (
                       <div className="flex flex-col gap-2 mt-3 max-h-40 overflow-y-auto custom-scrollbar pr-1">
-                        {autoFormData.test_schedules.map((schedule, idx) => (
+                        {autoFormData.test_schedules.map((schedule: any, idx) => (
                           <div key={idx} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-orange-100 shadow-sm">
                             <span className="text-xs font-bold text-orange-900 flex items-center gap-2">
-                              {['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'][schedule.day]} 
+                              {schedule.date 
+                                ? schedule.date.split('-').reverse().join('.') 
+                                : ['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'][schedule.day]} 
                               <span className="text-orange-500 opacity-50 px-1">•</span> 
                               {schedule.time}
                             </span>
@@ -690,19 +698,6 @@ export default function KnowledgePage() {
                     </label>
                   ))}
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-blue-700">Durum: {autoFormData.is_active ? 'AKTİF' : 'PASİF'}</span>
-                  <p className="text-[10px] text-blue-500 font-medium">Bu içeriklerin otomatik gönderimi açık kalsın mı?</p>
-                </div>
-                <button 
-                  onClick={() => setAutoFormData({ ...autoFormData, is_active: !autoFormData.is_active })}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoFormData.is_active ? 'bg-blue-600' : 'bg-gray-200'}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoFormData.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
               </div>
 
               <div className="flex gap-3 pt-2">

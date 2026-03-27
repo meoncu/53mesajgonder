@@ -32,6 +32,7 @@ export async function GET(request: Request) {
     const istanbulTimeString = now.toLocaleString("en-US", { timeZone: "Europe/Istanbul", hour12: false });
     const istanbulDate = new Date(istanbulTimeString);
     
+    const currentDate = istanbulDate.toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
     const currentDay = istanbulDate.getDay(); // 0: Pazar, 1: Pzt ... 6: Cts
     const currentHour = String(istanbulDate.getHours()).padStart(2, '0');
     const currentMinute = String(istanbulDate.getMinutes()).padStart(2, '0');
@@ -42,9 +43,9 @@ export async function GET(request: Request) {
     if (!forceSend) {
       if (automation.is_test_mode && automation.test_schedules && automation.test_schedules.length > 0) {
         // TEST MODU
-        shouldSend = automation.test_schedules.some((s: any) => s.day === currentDay && s.time === currentTime);
+        shouldSend = automation.test_schedules.some((s: any) => s.date === currentDate && s.time === currentTime);
         if (!shouldSend) {
-          return NextResponse.json({ success: false, message: `Test modundasınız. Mevcut zaman (${currentDay} ${currentTime}) tanımlı test zamanlarıyla uyuşmuyor.` });
+          return NextResponse.json({ success: false, message: `Test modundasınız. Mevcut zaman (${currentDate} ${currentTime}) tanımlı test zamanlarıyla uyuşmuyor.` });
         }
       } else {
         // NORMAL MOD

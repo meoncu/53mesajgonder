@@ -207,6 +207,21 @@ export default function KnowledgePage() {
     }
   });
 
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ id, type, is_sent }: { id: string, type: string, is_sent: boolean }) => {
+      const res = await fetch('/api/knowledge/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, type, is_sent: !is_sent }),
+      });
+      if (!res.ok) throw new Error('Durum güncellenemedi');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge-library'] });
+    }
+  });
+
   const filteredItems = items.filter(item => 
     item.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.narrator && item.narrator.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -342,13 +357,23 @@ export default function KnowledgePage() {
                     </td>
                     <td className="px-6 py-4">
                       {item.is_sent ? (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
+                        <button 
+                          onClick={() => toggleStatusMutation.mutate({ id: item.id, type: item.type, is_sent: item.is_sent })}
+                          disabled={toggleStatusMutation.isPending}
+                          title="Tıklayarak durumu SIRADA olarak güncelleyebilirsiniz"
+                          className="inline-flex items-center gap-1 text-[9px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100 hover:bg-green-100 transition-colors disabled:opacity-50"
+                        >
                           <CheckCircle2 size={10} /> GÖNDERİLDİ
-                        </span>
+                        </button>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-black text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100">
+                        <button 
+                          onClick={() => toggleStatusMutation.mutate({ id: item.id, type: item.type, is_sent: item.is_sent })}
+                          disabled={toggleStatusMutation.isPending}
+                          title="Tıklayarak durumu GÖNDERİLDİ olarak güncelleyebilirsiniz"
+                          className="inline-flex items-center gap-1 text-[9px] font-black text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 hover:bg-orange-100 transition-colors disabled:opacity-50"
+                        >
                           SIRADA
-                        </span>
+                        </button>
                       )}
                     </td>
                     <td className="px-6 py-4 max-w-md">

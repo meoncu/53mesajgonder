@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { 
   Plus, Trash2, Send, Calendar, Clock, 
-  MessageSquare, Users, CheckCircle2, AlertCircle, X, Pencil
+  MessageSquare, Users, CheckCircle2, AlertCircle, X, Pencil, Star, Search
 } from 'lucide-react';
 
 interface Campaign {
@@ -13,6 +13,7 @@ interface Campaign {
   name: string;
   message: string;
   groupIds: string[];
+  contactIds?: string[];
   status: 'draft' | 'scheduled' | 'processing' | 'completed' | 'failed';
   isArchived: boolean;
   sentAt?: string;
@@ -27,6 +28,13 @@ interface Group {
   type?: 'contact' | 'campaign';
 }
 
+interface Contact {
+  id: string;
+  fullName: string;
+  primaryPhone?: string;
+  isFavorite?: boolean;
+}
+
 export default function CampaignsPage() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,9 +44,12 @@ export default function CampaignsPage() {
     name: '',
     message: '',
     groupIds: [] as string[],
+    contactIds: [] as string[],
     scheduledAt: '',
     status: 'draft' as Campaign['status']
   });
+  const [contactSearch, setContactSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'groups' | 'contacts'>('groups');
 
   const { data: campaignsData, isLoading: campaignsLoading } = useQuery({
     queryKey: ['campaigns'],
@@ -53,6 +64,14 @@ export default function CampaignsPage() {
     queryKey: ['groups'],
     queryFn: async () => {
       const res = await fetch('/api/groups');
+      return res.json();
+    }
+  });
+
+  const { data: contactsData } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: async () => {
+      const res = await fetch('/api/contacts');
       return res.json();
     }
   });
@@ -96,28 +115,43 @@ export default function CampaignsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error('Kampanya güncellenemedi');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || errorData.message || 'Kampanya güncellenemedi');
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       closeModal();
     },
+    onError: (error: Error) => {
+      alert(`Güncelleme Hatası: ${error.message}\n\nİpucu: Supabase'de 'contact_ids' sütununun 'text[]' (Array) tipinde olduğundan emin olun.`);
+    }
   });
 
-  const openModal = () => setIsModalOpen(true);
+  const openModal = () => {
+    setEditingCampaignId(null);
+    setFormData({ name: '', message: '', groupIds: [], contactIds: [], scheduledAt: '', status: 'draft' });
+    setIsModalOpen(true);
+  };
+
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingCampaignId(null);
-    setFormData({ name: '', message: '', groupIds: [], scheduledAt: '', status: 'draft' });
+    setFormData({ name: '', message: '', groupIds: [], contactIds: [], scheduledAt: '', status: 'draft' });
+    setContactSearch('');
+    setShowSelectedOnly(false);
   };
 
   const handleEdit = (campaign: Campaign) => {
     setEditingCampaignId(campaign.id);
+    const safeContactIds = Array.isArray(campaign.contactIds) ? campaign.contactIds : [];
     setFormData({
       name: campaign.name,
       message: campaign.message,
-      groupIds: campaign.groupIds,
+      groupIds: Array.isArray(campaign.groupIds) ? campaign.groupIds : [],
+      contactIds: safeContactIds,
       scheduledAt: campaign.scheduledAt ? campaign.scheduledAt.substring(0, 16) : '',
       status: campaign.status
     });
@@ -125,12 +159,27 @@ export default function CampaignsPage() {
   };
 
   const handleGroupToggle = (groupId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      groupIds: prev.groupIds.includes(groupId)
-        ? prev.groupIds.filter(id => id !== groupId)
-        : [...prev.groupIds, groupId]
-    }));
+    setFormData(prev => {
+      const currentGroups = Array.isArray(prev.groupIds) ? prev.groupIds : [];
+      return {
+        ...prev,
+        groupIds: currentGroups.includes(groupId)
+          ? currentGroups.filter(id => id !== groupId)
+          : [...currentGroups, groupId]
+      };
+    });
+  };
+
+  const handleContactToggle = (contactId: string) => {
+    setFormData(prev => {
+      const currentContacts = Array.isArray(prev.contactIds) ? prev.contactIds : [];
+      return {
+        ...prev,
+        contactIds: currentContacts.includes(contactId)
+          ? currentContacts.filter(id => id !== contactId)
+          : [...currentContacts, contactId]
+      };
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -142,6 +191,8 @@ export default function CampaignsPage() {
     
     const payload = { 
       ...formData, 
+      groupIds: Array.isArray(formData.groupIds) ? formData.groupIds : [],
+      contactIds: Array.isArray(formData.contactIds) ? formData.contactIds : [],
       status: finalStatus,
       scheduledAt: formData.scheduledAt ? new Date(formData.scheduledAt).toISOString() : null
     };
@@ -157,9 +208,34 @@ export default function CampaignsPage() {
   const allGroups: Group[] = groupsData?.items || [];
   const campaignGroups = allGroups.filter(g => g.type === 'campaign');
   const contactGroups = allGroups.filter(g => !g.type || g.type === 'contact');
+  
+  const allContacts: Contact[] = contactsData?.items || [];
+  const sortedContacts = [...allContacts].sort((a, b) => {
+    if (a.isFavorite && !b.isFavorite) return -1;
+    if (!a.isFavorite && b.isFavorite) return 1;
+    return a.fullName.localeCompare(b.fullName);
+  });
+
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
   // Filter campaigns based on archive state
   const campaigns = rawCampaigns.filter(c => showArchive ? c.isArchived : !c.isArchived);
+
+  const filteredContactsSelection = sortedContacts.filter(c => {
+    const matchesSearch = c.fullName.toLowerCase().includes(contactSearch.toLowerCase()) || 
+                         (c.primaryPhone && c.primaryPhone.includes(contactSearch));
+    const currentSelected = Array.isArray(formData.contactIds) ? formData.contactIds : [];
+    if (showSelectedOnly) {
+      return matchesSearch && currentSelected.includes(c.id);
+    }
+    return matchesSearch;
+  });
+
+  const clearContactSelection = () => {
+    if (confirm('Tüm seçili kişileri temizlemek istediğinize emin misiniz?')) {
+      setFormData(prev => ({ ...prev, contactIds: [] }));
+    }
+  };
 
   const createGroupMutation = useMutation({
     mutationFn: async (newName: string) => {
@@ -264,11 +340,15 @@ export default function CampaignsPage() {
 
               {!showArchive && (
                 <div className="flex items-center justify-between text-[10px] font-bold">
-                  <span className="text-gray-400 uppercase tracking-wider">Hedef Gruplar</span>
-                  <span className="text-gray-700 truncate max-w-[120px]">{campaign.groupIds.map(id => {
-                    const g = allGroups.find(g => g.id === id);
-                    return g ? g.name : '';
-                  }).filter(Boolean).join(', ') || 'Grup Seçilmedi'}</span>
+                  <span className="text-gray-400 uppercase tracking-wider">Hedef</span>
+                  <span className="text-gray-700 truncate max-w-[120px]">
+                    {campaign.groupIds.length > 0 
+                      ? campaign.groupIds.map(id => allGroups.find(g => g.id === id)?.name).filter(Boolean).join(', ')
+                      : campaign.contactIds && campaign.contactIds.length > 0 
+                        ? `${campaign.contactIds.length} Münferit Kişi`
+                        : 'Hedef Seçilmedi'
+                    }
+                  </span>
                 </div>
               )}
 
@@ -290,8 +370,14 @@ export default function CampaignsPage() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col transform transition-all animate-in zoom-in-95 duration-200 border border-gray-100">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]"
+          onClick={closeModal}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col transform transition-all animate-in zoom-in-95 duration-200 border border-gray-100"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
               <h3 className="text-lg font-bold text-gray-900 font-outfit">
                 {editingCampaignId ? 'Kampanyayı Güncelle' : 'Yeni Kampanya Oluştur'}
@@ -299,7 +385,7 @@ export default function CampaignsPage() {
               <button onClick={closeModal} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 transition-colors"><X size={20} /></button>
             </div>
             
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar">
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Kampanya Başlığı</label>
@@ -309,78 +395,195 @@ export default function CampaignsPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-4 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-sm"
-                    placeholder="Örn: Ramazan Bayramı Mesajı"
+                    placeholder="Başlık girin..."
                   />
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mesaj İçeriği</label>
-                  <textarea
-                    required
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    rows={4}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none font-medium text-sm"
-                    placeholder="Göndermek istediğiniz mesaj..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Hedef Gruplar</label>
-                    <button type="button" onClick={handleCreateGroup} className="text-[10px] font-bold text-blue-600 hover:underline">+ Yeni Grup</button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-xl border border-border">
-                    {[...contactGroups, ...campaignGroups].map((group) => {
-                      const isSelected = formData.groupIds.includes(group.id);
-                      return (
-                        <div
-                          key={group.id}
-                          onClick={() => handleGroupToggle(group.id)}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all border ${
-                            isSelected 
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
-                              : 'bg-white text-gray-600 border-gray-100 hover:border-blue-200'
-                          }`}
-                        >
-                          <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isSelected ? 'bg-white border-white' : 'border-gray-200 bg-gray-50'}`}>
-                            {isSelected && <div className="w-1.5 h-1.5 bg-blue-600 rounded-sm" />}
-                          </div>
-                          <span className="text-[11px] font-bold truncate">{group.name}</span>
-                        </div>
-                      );
-                    })}
-                    {[...contactGroups, ...campaignGroups].length === 0 && (
-                      <p className="col-span-full text-[10px] text-gray-400 italic text-center py-2">Grup bulunamadı.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Gönderim Zamanı</label>
-                    <input
-                      type="datetime-local"
-                      value={formData.scheduledAt}
-                      onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-sm"
-                    />
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider flex justify-between">
+                      <span>Zamanlama</span>
+                      {formData.scheduledAt && (
+                        <span className="text-blue-600 lowercase font-medium">
+                          {new Date(formData.scheduledAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="datetime-local"
+                        step="60"
+                        value={formData.scheduledAt}
+                        onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                        className="w-full pl-3 pr-10 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-[13px]"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Durum</label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                      className="w-full px-4 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_0.5rem_center] bg-no-repeat"
+                      className="w-full px-3 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-xs appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_0.5rem_center] bg-no-repeat"
                     >
                       <option value="draft">Taslak</option>
                       <option value="scheduled">Planlandı</option>
                       <option value="processing">Gönderiliyor</option>
-                      <option value="completed">Tamamlandı</option>
-                      <option value="failed">Hata</option>
                     </select>
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mesaj İçeriği</label>
+                <textarea
+                  required
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  rows={2}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-border rounded-xl outline-none focus:ring-2 focus:ring-blue-100 transition-all resize-none font-medium text-sm"
+                  placeholder="Mesajınızı buraya yazın..."
+                />
+              </div>
+
+              <div className="space-y-3 bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex p-0.5 bg-gray-200/50 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('groups')}
+                      className={`px-4 py-1.5 rounded-md text-[11px] font-bold transition-all ${activeTab === 'groups' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      Gruplar ({formData.groupIds.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('contacts')}
+                      className={`px-4 py-1.5 rounded-md text-[11px] font-bold transition-all ${activeTab === 'contacts' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      Kişiler ({formData.contactIds.length})
+                    </button>
+                  </div>
+                  
+                  {activeTab === 'groups' ? (
+                    <button type="button" onClick={handleCreateGroup} className="text-[10px] font-bold text-blue-600 hover:underline">+ Yeni Grup</button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                       <div 
+                        onClick={() => setShowSelectedOnly(!showSelectedOnly)}
+                        className={`px-2 py-1 rounded-md text-[9px] font-bold cursor-pointer border transition-all ${
+                          showSelectedOnly ? 'bg-blue-100 border-blue-200 text-blue-700' : 'bg-white border-gray-100 text-gray-400 hover:text-gray-500'
+                        }`}
+                      >
+                        {showSelectedOnly ? 'Hepsini Göster' : 'Seçilenleri Gör'}
+                      </div>
+                      {formData.contactIds.length > 0 && (
+                        <button 
+                          type="button" 
+                          onClick={clearContactSelection}
+                          className="p-1.5 hover:bg-red-50 rounded-md text-red-500 transition-colors"
+                          title="Seçimleri Temizle"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                      <div className="relative w-28">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={10} />
+                        <input 
+                          type="text" 
+                          value={contactSearch}
+                          onChange={(e) => setContactSearch(e.target.value)}
+                          placeholder="Ara..."
+                          className="w-full pl-6 pr-2 py-1.5 bg-white border border-border rounded-lg text-[10px] outline-none focus:ring-1 focus:ring-blue-100"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                  {activeTab === 'groups' ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {[...contactGroups, ...campaignGroups].map((group) => {
+                        const isSelected = formData.groupIds.includes(group.id);
+                        return (
+                          <div
+                            key={group.id}
+                            onClick={() => handleGroupToggle(group.id)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all border ${
+                              isSelected 
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
+                                : 'bg-white text-gray-600 border-gray-100 hover:border-blue-100'
+                            }`}
+                          >
+                            <div className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center shrink-0 ${isSelected ? 'bg-white border-white' : 'border-gray-200 bg-gray-50'}`}>
+                              {isSelected && <div className="w-1.5 h-1.5 bg-blue-600 rounded-sm" />}
+                            </div>
+                            <span className="text-[11px] font-bold truncate leading-none">{group.name}</span>
+                          </div>
+                        );
+                      })}
+                      {[...contactGroups, ...campaignGroups].length === 0 && (
+                        <p className="col-span-full text-[11px] text-gray-400 italic text-center py-8">Grup bulunamadı.</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {filteredContactsSelection.map((contact) => {
+                        const isSelected = formData.contactIds.includes(contact.id);
+                        return (
+                          <div
+                            key={contact.id}
+                            onClick={() => handleContactToggle(contact.id)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all border ${
+                              isSelected 
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
+                                : 'bg-white text-gray-600 border-gray-100 hover:border-blue-100'
+                            }`}
+                          >
+                            <div className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center shrink-0 ${isSelected ? 'bg-white border-white' : 'border-gray-200 bg-gray-50'}`}>
+                              {isSelected && <div className="w-1.5 h-1.5 bg-blue-600 rounded-sm" />}
+                            </div>
+                            <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                              {contact.isFavorite && <Star size={10} className={isSelected ? 'text-white' : 'text-amber-400'} fill="currentColor" />}
+                              <span className="text-[11px] font-bold truncate leading-none">{contact.fullName}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {filteredContactsSelection.length === 0 && (
+                        <p className="col-span-full text-[11px] text-gray-400 italic text-center py-8">Kişi bulunamadı.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* SELECTED NAMES SUMMARY */}
+                {Array.isArray(formData.contactIds) && formData.contactIds.length > 0 && (
+                  <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-2.5">
+                    <div className="flex justify-between items-center mb-1.5 px-1">
+                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Seçilen Kişiler ({formData.contactIds.length})</span>
+                      <button type="button" onClick={clearContactSelection} className="text-[10px] text-red-500 font-bold hover:underline">Tümünü Kaldır</button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto custom-scrollbar">
+                      {formData.contactIds.map(id => {
+                        const contact = sortedContacts.find(c => c.id === id);
+                        return contact ? (
+                          <div key={id} className="flex items-center gap-1 bg-white border border-blue-200 px-2 py-0.5 rounded-md shadow-sm">
+                            <span className="text-[10px] font-medium text-gray-700">{contact.fullName}</span>
+                            <button 
+                              type="button" 
+                              onClick={() => handleContactToggle(id)}
+                              className="text-gray-400 hover:text-red-500"
+                            >
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </form>
 

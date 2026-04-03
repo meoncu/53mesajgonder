@@ -11,6 +11,20 @@ export async function GET() {
     
     const supabase = getSupabaseAdmin();
 
+    const parseSafeArray = (val: any) => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try {
+          if (val.startsWith('[')) return JSON.parse(val);
+          return val.split(',').map(s => s.trim()).filter(Boolean);
+        } catch (e) {
+          return [val];
+        }
+      }
+      return [];
+    };
+
     // Find scheduled campaigns that are due
     const { data: dueCampaigns, error: campaignError } = await supabase
       .from('campaigns')
@@ -27,27 +41,23 @@ export async function GET() {
     const processedCampaigns = [];
 
     for (const campaign of dueCampaigns) {
-      const groupIds = campaign.group_ids || [];
-      const contacts: any[] = [];
+      const groupIds = parseSafeArray(campaign.group_ids);
+      const individualContactIds = parseSafeArray(campaign.contact_ids);
+      
+      const contactsMap = new Map<string, any>();
 
+      // 1. Fetch contacts from Groups
       if (groupIds.length > 0) {
-        // Fetch contacts that belong to any of these groups
-        // Using overlaps (&&) for array columns in Supabase
-        const { data: contactsData, error: contactError } = await supabase
+        const { data: groupContacts, error: groupError } = await supabase
           .from('contacts')
           .select('id, full_name, primary_phone, normalized_primary_phone')
           .overlaps('group_ids', groupIds);
 
-        if (contactError) {
-          console.error(`Failed to fetch contacts for campaign ${campaign.id}:`, contactError);
-          continue;
-        }
-
-        if (contactsData) {
-          contactsData.forEach(c => {
+        if (!groupError && groupContacts) {
+          groupContacts.forEach(c => {
             const phone = c.normalized_primary_phone || c.primary_phone;
             if (phone) {
-              contacts.push({
+              contactsMap.set(c.id, {
                 id: c.id,
                 fullName: c.full_name,
                 phone: phone
@@ -56,6 +66,29 @@ export async function GET() {
           });
         }
       }
+
+      // 2. Fetch Individual Contacts
+      if (individualContactIds.length > 0) {
+        const { data: individualContacts, error: indError } = await supabase
+          .from('contacts')
+          .select('id, full_name, primary_phone, normalized_primary_phone')
+          .in('id', individualContactIds);
+
+        if (!indError && individualContacts) {
+          individualContacts.forEach(c => {
+            const phone = c.normalized_primary_phone || c.primary_phone;
+            if (phone && !contactsMap.has(c.id)) {
+              contactsMap.set(c.id, {
+                id: c.id,
+                fullName: c.full_name,
+                phone: phone
+              });
+            }
+          });
+        }
+      }
+
+      const contacts = Array.from(contactsMap.values());
 
       processedCampaigns.push({
         id: campaign.id,

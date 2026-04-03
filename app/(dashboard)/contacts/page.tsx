@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { 
   Search, Edit3, X, FileText, Trash2, User, Phone, 
-  Tag, ArrowUp, ArrowDown, Users, Plus, CheckSquare, Square, AlertTriangle
+  Tag, ArrowUp, ArrowDown, Users, Plus, CheckSquare, Square, AlertTriangle, Star
 } from 'lucide-react';
 
 interface Group {
@@ -23,6 +23,7 @@ interface Contact {
   tags: string[];
   groupIds: string[];
   notes?: string;
+  isFavorite?: boolean;
 }
 
 export default function ContactsPage() {
@@ -38,7 +39,8 @@ export default function ContactsPage() {
     fullName: '',
     primaryPhone: '',
     notes: '',
-    groupIds: [] as string[]
+    groupIds: [] as string[],
+    isFavorite: false
   });
   
   const { data: groupsData } = useQuery({
@@ -137,7 +139,24 @@ export default function ContactsPage() {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
     },
   });
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async ({ id, isFavorite }: { id: string; isFavorite: boolean }) => {
+      const res = await fetch(`/api/contacts/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isFavorite }),
+      });
+      if (!res.ok) throw new Error('Favori işlemi başarısız');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+    },
+  });
 
+  const handleToggleFavorite = (contact: Contact) => {
+    toggleFavoriteMutation.mutate({ id: contact.id, isFavorite: !contact.isFavorite });
+  };
   const bulkDeleteMutation = useMutation({
     mutationFn: async (contactIds: string[]) => {
       const res = await fetch('/api/contacts/bulk-delete', {
@@ -164,6 +183,10 @@ export default function ContactsPage() {
   };
 
   const sortedContacts = [...contacts].sort((a, b) => {
+    // Favorites first
+    if (a.isFavorite && !b.isFavorite) return -1;
+    if (!a.isFavorite && b.isFavorite) return 1;
+
     if (!sortConfig) return 0;
     const { key, direction } = sortConfig;
     
@@ -220,7 +243,8 @@ export default function ContactsPage() {
       fullName: '',
       primaryPhone: '',
       notes: '',
-      groupIds: []
+      groupIds: [],
+      isFavorite: false
     });
     setIsEditModalOpen(true);
   };
@@ -231,7 +255,8 @@ export default function ContactsPage() {
       fullName: contact.fullName,
       primaryPhone: contact.primaryPhone || '',
       notes: contact.notes || '',
-      groupIds: contact.groupIds || []
+      groupIds: contact.groupIds || [],
+      isFavorite: !!contact.isFavorite
     });
     setIsEditModalOpen(true);
   };
@@ -239,7 +264,7 @@ export default function ContactsPage() {
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setSelectedContact(null);
-    setFormData({ fullName: '', primaryPhone: '', notes: '', groupIds: [] });
+    setFormData({ fullName: '', primaryPhone: '', notes: '', groupIds: [], isFavorite: false });
   };
 
   const toggleGroupId = (groupId: string) => {
@@ -389,15 +414,23 @@ export default function ContactsPage() {
                       className={`hover:bg-gray-50/50 transition-colors group ${isSelected ? 'bg-blue-50/30' : ''}`}
                     >
                       <td className="px-6 py-3">
-                        <button 
-                          onClick={() => toggleSelect(contact.id)}
-                          className="p-1 rounded-md transition-colors"
-                        >
-                          {isSelected 
-                            ? <CheckSquare size={18} className="text-blue-600" /> 
-                            : <Square size={18} className="text-gray-200 group-hover:text-gray-300" />
-                          }
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => toggleSelect(contact.id)}
+                            className="p-1 rounded-md transition-colors"
+                          >
+                            {isSelected 
+                              ? <CheckSquare size={18} className="text-blue-600" /> 
+                              : <Square size={18} className="text-gray-200 group-hover:text-gray-300" />
+                            }
+                          </button>
+                          <button
+                            onClick={() => handleToggleFavorite(contact)}
+                            className={`p-1 transition-colors ${contact.isFavorite ? 'text-amber-400' : 'text-gray-200 group-hover:text-gray-300'}`}
+                          >
+                            <Star size={18} fill={contact.isFavorite ? "currentColor" : "none"} />
+                          </button>
+                        </div>
                       </td>
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-3">

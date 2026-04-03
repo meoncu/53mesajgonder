@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       notes: item.notes,
       tags: item.tags,
       groupIds: item.group_ids || [],
+      isFavorite: item.is_favorite || false,
       isActive: item.is_active,
       ownerUserId: item.owner_user_id,
       createdAt: item.created_at,
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { fullName, primaryPhone, notes, groupIds, tags } = body;
+    const { fullName, primaryPhone, notes, groupIds, tags, isFavorite } = body;
 
     // Split full name into first and last name
     const names = (fullName || '').trim().split(' ');
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
       normalized_primary_phone: primaryPhone ? primaryPhone.replace(/[^0-9]/g, '') : null,
       notes: notes || '',
       group_ids: groupIds || [],
+      is_favorite: !!isFavorite,
       tags: tags || [],
       source: 'manual',
       is_active: true,

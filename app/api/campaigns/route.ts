@@ -11,11 +11,28 @@ export async function GET() {
 
     if (dbError) throw dbError;
 
+    const parseSafeArray = (val: any) => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try {
+          // If it's a JSON string like '["a", "b"]'
+          if (val.startsWith('[')) return JSON.parse(val);
+          // If it's a comma-separated string
+          return val.split(',').map(s => s.trim()).filter(Boolean);
+        } catch (e) {
+          return [val];
+        }
+      }
+      return [];
+    };
+
     const formattedItems = (items || []).map((item: any) => ({
       id: item.id,
       name: item.name,
       message: item.message,
-      groupIds: item.group_ids,
+      groupIds: parseSafeArray(item.group_ids),
+      contactIds: parseSafeArray(item.contact_ids),
       status: item.status,
       scheduledAt: item.scheduled_at,
       isArchived: item.is_archived,
@@ -35,10 +52,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, message, groupIds, scheduledAt } = body;
+    const { name, message, groupIds, contactIds, scheduledAt } = body;
 
-    if (!name || !message || !groupIds?.length) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!name || !message || (!groupIds?.length && !contactIds?.length)) {
+      return NextResponse.json({ error: 'At least one group or contact selection is required' }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
@@ -48,7 +65,8 @@ export async function POST(request: NextRequest) {
       id,
       name,
       message,
-      group_ids: groupIds,
+      group_ids: groupIds || [],
+      contact_ids: contactIds || [],
       scheduled_at: scheduledAt || null,
       status: scheduledAt ? 'scheduled' : 'draft',
       owner_user_id: 'meoncu@gmail.com',
@@ -68,7 +86,8 @@ export async function POST(request: NextRequest) {
       id: data.id,
       name: data.name,
       message: data.message,
-      groupIds: data.group_ids,
+      groupIds: data.group_ids || [],
+      contactIds: data.contact_ids || [],
       status: data.status,
       createdAt: data.created_at
     });

@@ -8,7 +8,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, message, groupIds, scheduledAt, status } = body;
+    const { name, message, groupIds, contactIds, scheduledAt, status } = body;
 
     const supabase = getSupabaseAdmin();
     
@@ -19,6 +19,7 @@ export async function PATCH(
     if (name !== undefined) updateData.name = name;
     if (message !== undefined) updateData.message = message;
     if (groupIds !== undefined) updateData.group_ids = groupIds;
+    if (contactIds !== undefined) updateData.contact_ids = contactIds;
     if (scheduledAt !== undefined) updateData.scheduled_at = scheduledAt;
     if (status !== undefined) updateData.status = status;
 

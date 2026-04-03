@@ -60,6 +60,7 @@ export default function CampaignsPage() {
       if (!res.ok) throw new Error('Yüklenemedi');
       return res.json();
     },
+    refetchInterval: 3000, // Her 3 saniyede bir otomatik yenile (canlı progress için)
   });
 
   const { data: groupsData } = useQuery({

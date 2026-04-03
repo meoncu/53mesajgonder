@@ -46,47 +46,44 @@ export async function GET() {
       
       const contactsMap = new Map<string, any>();
 
-      // 1. Fetch contacts from Groups
+      // Combined Query for both groups and individual IDs to reduce DB calls and issues
+      let allContacts: any[] = [];
+      
+      // 1. Fetch from Groups if any
       if (groupIds.length > 0) {
         const { data: groupContacts, error: groupError } = await supabase
           .from('contacts')
           .select('id, full_name, primary_phone, normalized_primary_phone')
           .overlaps('group_ids', groupIds);
-
+        
         if (!groupError && groupContacts) {
-          groupContacts.forEach(c => {
-            const phone = c.normalized_primary_phone || c.primary_phone;
-            if (phone) {
-              contactsMap.set(c.id, {
-                id: c.id,
-                fullName: c.full_name,
-                phone: phone
-              });
-            }
-          });
+          allContacts = [...allContacts, ...groupContacts];
         }
       }
 
-      // 2. Fetch Individual Contacts
+      // 2. Fetch from Individual IDs if any
       if (individualContactIds.length > 0) {
         const { data: individualContacts, error: indError } = await supabase
           .from('contacts')
           .select('id, full_name, primary_phone, normalized_primary_phone')
           .in('id', individualContactIds);
-
+        
         if (!indError && individualContacts) {
-          individualContacts.forEach(c => {
-            const phone = c.normalized_primary_phone || c.primary_phone;
-            if (phone && !contactsMap.has(c.id)) {
-              contactsMap.set(c.id, {
-                id: c.id,
-                fullName: c.full_name,
-                phone: phone
-              });
-            }
-          });
+          allContacts = [...allContacts, ...individualContacts];
         }
       }
+
+      // 3. Deduplicate and validate phones
+      allContacts.forEach(c => {
+        const phone = c.normalized_primary_phone || c.primary_phone;
+        if (phone && !contactsMap.has(c.id)) {
+          contactsMap.set(c.id, {
+            id: c.id,
+            fullName: c.full_name,
+            phone: phone
+          });
+        }
+      });
 
       const contacts = Array.from(contactsMap.values());
 

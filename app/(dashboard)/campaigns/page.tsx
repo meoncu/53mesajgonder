@@ -219,7 +219,10 @@ export default function CampaignsPage() {
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
   // Filter campaigns based on archive state
-  const campaigns = rawCampaigns.filter(c => showArchive ? c.isArchived : !c.isArchived);
+  const getIsArchived = (c: Campaign) => c.isArchived || c.status === 'completed';
+
+  // Filter campaigns based on archive state
+  const campaigns = rawCampaigns.filter(c => showArchive ? getIsArchived(c) : !getIsArchived(c));
 
   const filteredContactsSelection = sortedContacts.filter(c => {
     const matchesSearch = c.fullName.toLowerCase().includes(contactSearch.toLowerCase()) || 
@@ -254,6 +257,24 @@ export default function CampaignsPage() {
   const handleCreateGroup = () => {
     const name = prompt('Yeni kampanya grubu ismi:');
     if (name) createGroupMutation.mutate(name);
+  };
+
+  const handleForceComplete = (campaign: Campaign) => {
+    if (confirm(`'${campaign.name}' kampanyasını manuel olarak 'Tamamlandı' işaretlemek istiyor musunuz?`)) {
+      updateMutation.mutate({ 
+        id: campaign.id, 
+        data: { status: 'completed' } 
+      });
+    }
+  };
+
+  const handleResetToDraft = (campaign: Campaign) => {
+    if (confirm(`'${campaign.name}' kampanyasını taslağa geri çekmek istiyor musunuz?`)) {
+      updateMutation.mutate({ 
+        id: campaign.id, 
+        data: { status: 'draft' } 
+      });
+    }
   };
 
   if (campaignsLoading) return <div className="p-8 text-center text-gray-500">Kampanyalar yükleniyor...</div>;
@@ -295,7 +316,7 @@ export default function CampaignsPage() {
                  <Clock size={18} />}
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {!campaign.isArchived && <button onClick={() => handleEdit(campaign)} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400"><Pencil size={14} /></button>}
+                {!getIsArchived(campaign) && <button onClick={() => handleEdit(campaign)} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400"><Pencil size={14} /></button>}
                 <button onClick={() => { if(confirm('Sil?')) deleteMutation.mutate(campaign.id) }} className="p-1.5 hover:bg-red-50 rounded-md text-red-500"><Trash2 size={14} /></button>
               </div>
             </div>
@@ -306,26 +327,47 @@ export default function CampaignsPage() {
             <div className="space-y-2 pt-3 border-t border-gray-50">
               <div className="flex items-center justify-between text-[10px] font-bold">
                 <span className="text-gray-400 uppercase tracking-wider">Durum</span>
-                <span className={`px-2 py-0.5 rounded-full capitalize ${
-                  campaign.status === 'completed' ? 'bg-green-100 text-green-700' :
-                  campaign.status === 'failed' ? 'bg-red-100 text-red-700' :
-                  campaign.status === 'processing' ? 'bg-blue-100 text-blue-700' :
-                  campaign.status === 'scheduled' ? 'bg-amber-100 text-amber-700' :
-                  'bg-gray-100 text-gray-600'
-                }`}>{campaign.status === 'completed' ? 'Tamamlandı' : 
-                   campaign.status === 'failed' ? 'Hata' : 
-                   campaign.status === 'processing' ? 'Gönderiliyor' : 
-                   campaign.status === 'scheduled' ? 'Planlandı' : 'Taslak'}</span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded-full capitalize ${
+                    campaign.status === 'completed' ? 'bg-green-100 text-green-700' :
+                    campaign.status === 'failed' ? 'bg-red-100 text-red-700' :
+                    campaign.status === 'processing' ? 'bg-blue-100 text-blue-700' :
+                    campaign.status === 'scheduled' ? 'bg-amber-100 text-amber-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>{campaign.status === 'completed' ? 'Tamamlandı' : 
+                     campaign.status === 'failed' ? 'Hata' : 
+                     campaign.status === 'processing' ? 'Gönderiliyor' : 
+                     campaign.status === 'scheduled' ? 'Planlandı' : 'Taslak'}</span>
+                  
+                  {(campaign.status === 'processing' || campaign.status === 'failed') && (
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => handleForceComplete(campaign)}
+                        className="p-1 hover:bg-green-50 text-green-600 rounded-md border border-green-100 transition-all bg-white shadow-sm"
+                        title="Tamamlandı İşaretle"
+                      >
+                        <CheckCircle2 size={12} />
+                      </button>
+                      <button 
+                        onClick={() => handleResetToDraft(campaign)}
+                        className="p-1 hover:bg-amber-50 text-amber-600 rounded-md border border-amber-100 transition-all bg-white shadow-sm"
+                        title="Taslağa Geri Al"
+                      >
+                        <AlertCircle size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
               
-              {showArchive && campaign.sentAt && (
+              {getIsArchived(campaign) && campaign.sentAt && (
                 <div className="flex items-center justify-between text-[10px] font-bold">
                   <span className="text-gray-400 uppercase tracking-wider">Gönderim Tarihi</span>
                   <span className="text-gray-700">{new Date(campaign.sentAt).toLocaleString('tr-TR')}</span>
                 </div>
               )}
 
-              {showArchive && campaign.sentRecipients && (
+              {getIsArchived(campaign) && campaign.sentRecipients && (
                 <div className="flex flex-col gap-1 pt-1">
                   <span className="text-gray-400 uppercase tracking-wider text-[10px] font-bold">Alıcılar ({campaign.sentRecipients.length})</span>
                   <div className="max-h-24 overflow-y-auto bg-gray-50 p-2 rounded-lg custom-scrollbar">
@@ -338,7 +380,7 @@ export default function CampaignsPage() {
                 </div>
               )}
 
-              {!showArchive && (
+              {!getIsArchived(campaign) && (
                 <div className="flex items-center justify-between text-[10px] font-bold">
                   <span className="text-gray-400 uppercase tracking-wider">Hedef</span>
                   <span className="text-gray-700 truncate max-w-[120px]">
@@ -352,7 +394,7 @@ export default function CampaignsPage() {
                 </div>
               )}
 
-              {!showArchive && campaign.scheduledAt && (
+              {!getIsArchived(campaign) && campaign.scheduledAt && (
                 <div className="flex items-center justify-between text-[10px] font-bold">
                   <span className="text-gray-400 uppercase tracking-wider">Planlanan</span>
                   <span className="text-gray-700">{new Date(campaign.scheduledAt).toLocaleString('tr-TR')}</span>
@@ -428,7 +470,6 @@ export default function CampaignsPage() {
                     >
                       <option value="draft">Taslak</option>
                       <option value="scheduled">Planlandı</option>
-                      <option value="processing">Gönderiliyor</option>
                     </select>
                   </div>
                 </div>

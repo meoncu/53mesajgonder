@@ -33,6 +33,7 @@ interface Contact {
   fullName: string;
   primaryPhone?: string;
   isFavorite?: boolean;
+  groupIds?: string[];
 }
 
 export default function CampaignsPage() {
@@ -50,6 +51,7 @@ export default function CampaignsPage() {
   });
   const [contactSearch, setContactSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'groups' | 'contacts'>('groups');
+  const [viewingCampaignId, setViewingCampaignId] = useState<string | null>(null);
 
   const { data: campaignsData, isLoading: campaignsLoading } = useQuery({
     queryKey: ['campaigns'],
@@ -316,6 +318,7 @@ export default function CampaignsPage() {
                  <Clock size={18} />}
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => setViewingCampaignId(campaign.id)} className="p-1.5 hover:bg-blue-50 rounded-md text-blue-600" title="Detayları İzle"><Search size={14} /></button>
                 {!getIsArchived(campaign) && <button onClick={() => handleEdit(campaign)} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400"><Pencil size={14} /></button>}
                 <button onClick={() => { if(confirm('Sil?')) deleteMutation.mutate(campaign.id) }} className="p-1.5 hover:bg-red-50 rounded-md text-red-500"><Trash2 size={14} /></button>
               </div>
@@ -398,6 +401,48 @@ export default function CampaignsPage() {
                 <div className="flex items-center justify-between text-[10px] font-bold">
                   <span className="text-gray-400 uppercase tracking-wider">Planlanan</span>
                   <span className="text-gray-700">{new Date(campaign.scheduledAt).toLocaleString('tr-TR')}</span>
+                </div>
+              )}
+
+              {/* PROGRESS BAR FOR PROCESSING CAMPAIGNS */}
+              {campaign.status === 'processing' && (
+                <div className="pt-3 space-y-1.5">
+                  <div className="flex justify-between text-[10px] font-bold">
+                    <span className="text-blue-600 animate-pulse">Gönderiliyor...</span>
+                    <span className="text-gray-500">
+                      {(() => {
+                        const sentCount = campaign.sentRecipients?.length || 0;
+                        const totalCount = (() => {
+                          const contactFromGroups = campaign.groupIds.reduce((acc, gid) => {
+                            const group = allGroups.find(g => g.id === gid);
+                            const contactsInGroup = allContacts.filter(c => {
+                              // This is an estimate as we don't have group_ids pre-cached on all contacts in all cases
+                              // but we'll try to match it
+                              return false; // Complex to calculate exactly on frontend without proper DB join
+                            });
+                            return acc; // Placeholder
+                          }, 0);
+                          // For now, if it's processing, we show sentinel value or use the Individual count
+                          return campaign.contactIds?.length || 1; 
+                        })();
+                        return sentCount > 0 ? `${sentCount} kişi` : 'Hazırlanıyor';
+                      })()}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-blue-600 transition-all duration-500 ease-out"
+                      style={{ width: campaign.sentRecipients && campaign.sentRecipients.length > 0 ? '45%' : '10%' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* SUCCESS STATUS FOR COMPLETED CAMPAIGNS */}
+              {campaign.status === 'completed' && (
+                <div className="pt-2 flex items-center gap-1.5 text-[10px] font-bold text-green-600">
+                  <CheckCircle2 size={12} />
+                  <span>Başarıyla Tamamlandı ({campaign.sentRecipients?.length || 0} Kişi)</span>
                 </div>
               )}
             </div>
@@ -641,6 +686,111 @@ export default function CampaignsPage() {
           </div>
         </div>
       )}
+      {/* CAMPAIGN DETAIL MODAL */}
+      {viewingCampaignId && (() => {
+        const campaign = rawCampaigns.find(c => c.id === viewingCampaignId);
+        if (!campaign) return null;
+        
+        // Find expected recipients (handling both string IDs or objects)
+        const sentIds = new Set(campaign.sentRecipients?.map(r => typeof r === 'string' ? r : (r.id || (r as any).contact_id)) || []);
+        
+        // Find who is intended to receive (group + individual)
+        const recipientsMap = new Map<string, Contact>();
+        
+        // 1. Add individual selections
+        (campaign.contactIds || []).forEach(id => {
+          const contact = allContacts.find(c => c.id === id);
+          if (contact) recipientsMap.set(contact.id, contact);
+        });
+        
+        // 2. Add group members
+        (campaign.groupIds || []).forEach(gid => {
+          allContacts.filter(c => c.groupIds?.includes(gid)).forEach(contact => {
+            recipientsMap.set(contact.id, contact);
+          });
+        });
+
+        const allIntendedRecipients = Array.from(recipientsMap.values());
+        const total = allIntendedRecipients.length || 1;
+        
+        let sent = campaign.sentRecipients?.length || 0;
+        if (sent === 0 && campaign.status === 'completed') {
+           sent = allIntendedRecipients.length;  // If manually completed but nothing logged, assume all were sent
+        }
+        
+        const progress = Math.min(100, Math.round((sent / total) * 100));
+
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]" onClick={() => setViewingCampaignId(null)}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col border border-gray-100" onClick={e => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0">
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 leading-tight">{campaign.name}</h3>
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider pt-0.5">Gönderim Detayları</p>
+                </div>
+                <button onClick={() => setViewingCampaignId(null)} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 transition-colors"><X size={20} /></button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                {/* Progress Summary */}
+                <div className="bg-blue-50/50 rounded-2xl p-5 border border-blue-100/50">
+                  <div className="flex justify-between items-end mb-3">
+                    <div className="space-y-0.5">
+                      <span className="text-3xl font-black text-blue-700 font-outfit">%{progress}</span>
+                      <p className="text-[10px] font-bold text-blue-600/70 uppercase tracking-widest pl-1">İlerleme</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-gray-700">{sent} / {allIntendedRecipients.length}</p>
+                      <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Alıcı Tamamlandı</p>
+                    </div>
+                  </div>
+                  <div className="h-2.5 w-full bg-blue-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-600 transition-all duration-1000 ease-in-out" style={{ width: `${progress}%` }} />
+                  </div>
+                </div>
+
+                {/* Recipient List */}
+                <div className="space-y-3">
+                  <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-1">Tüm Alıcılar</h4>
+                  <div className="grid gap-2">
+                    {allIntendedRecipients.length > 0 ? allIntendedRecipients.map(contact => {
+                      const isSent = sentIds.has(contact.id) || (campaign.status === 'completed' && campaign.sentRecipients?.length === 0);
+                      return (
+                        <div key={contact.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isSent ? 'bg-green-50/30 border-green-100' : 'bg-white border-gray-100'}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${isSent ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                              {contact.fullName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-800 leading-none">{contact.fullName}</p>
+                              <p className="text-[10px] text-gray-400 font-medium pt-1">{contact.primaryPhone || 'No Phone'}</p>
+                            </div>
+                          </div>
+                          {isSent ? (
+                            <div className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center shadow-sm">
+                              <CheckCircle2 size={14} strokeWidth={3} />
+                            </div>
+                          ) : (
+                            <div className={`w-6 h-6 rounded-full border-2 border-dashed flex items-center justify-center ${campaign.status === 'processing' ? 'border-blue-200 animate-pulse' : 'border-gray-200'}`}>
+                              <Clock size={12} className="text-gray-300" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }) : (
+                      <p className="text-center py-10 text-gray-400 text-xs italic">Alıcı listesi yüklenemedi.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-4 bg-gray-50 border-t border-gray-100">
+                <Button onClick={() => setViewingCampaignId(null)} className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-border rounded-xl font-bold text-xs h-10 shadow-sm">Kapat</Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

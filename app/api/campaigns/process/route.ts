@@ -38,7 +38,7 @@ export async function GET() {
       return NextResponse.json({ items: [] });
     }
 
-    const processedCampaigns = [];
+    const processedCampaigns: any[] = [];
 
     for (const campaign of dueCampaigns) {
       const groupIds = parseSafeArray(campaign.group_ids);
@@ -87,15 +87,18 @@ export async function GET() {
 
       const contacts = Array.from(contactsMap.values());
 
-      processedCampaigns.push({
-        id: campaign.id,
-        name: campaign.name,
-        message: campaign.message,
-        contacts,
-        processedAtLocal: localNow
+      // Create a separate item for each contact so automation processes them as separate rows
+      contacts.forEach(contact => {
+        processedCampaigns.push({
+          id: campaign.id,
+          name: campaign.name,
+          message: campaign.message,
+          contact, // Send a single contact instead of an array
+          processedAtLocal: localNow
+        });
       });
 
-      // Update status to 'processing'
+      // Update status to 'processing' once per campaign
       await supabase
         .from('campaigns')
         .update({ 

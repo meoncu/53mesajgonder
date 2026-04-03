@@ -18,6 +18,34 @@ export async function POST(
 
     const supabase = getSupabaseAdmin();
 
+    // Try to parse body. If n8n sends a contact, log it as an individual send.
+    // If n8n sends no body, treat it as completing the whole campaign.
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch(e) {}
+
+    if (body && body.contact) {
+      const { data: campaign } = await supabase.from('campaigns').select('sent_recipients').eq('id', id).single();
+      const currentSent = campaign?.sent_recipients || [];
+      const newSent = [...currentSent];
+      
+      if (!newSent.find((c: any) => c.id === body.contact.id)) {
+        newSent.push(body.contact);
+      }
+      
+      const { error: dbError } = await supabase
+        .from('campaigns')
+        .update({
+          sent_recipients: newSent,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+        
+      if (dbError) throw dbError;
+      return NextResponse.json({ success: true, message: 'Contact marked as sent', sent_recipients: newSent });
+    }
+
     // Mark campaign as completed
     const { error: dbError } = await supabase
       .from('campaigns')

@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from './lib/supabase';
+import { getSupabaseAdmin } from './supabase';
 
 async function debug() {
   const supabase = getSupabaseAdmin();

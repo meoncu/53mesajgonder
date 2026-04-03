@@ -3,6 +3,9 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { getAppSettings } from '@/lib/firebase/settings';
 import { getLocalTimestamp, getUtcTimestamp } from '@/lib/utils/time';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     const settings = await getAppSettings();
@@ -116,6 +119,12 @@ export async function GET() {
       items: processedCampaigns,
       processedAt: now,
       timezone: settings.timezone
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     });
   } catch (error: any) {
     console.error('Failed to process campaigns:', error);

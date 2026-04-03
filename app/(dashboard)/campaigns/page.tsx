@@ -150,12 +150,23 @@ export default function CampaignsPage() {
   const handleEdit = (campaign: Campaign) => {
     setEditingCampaignId(campaign.id);
     const safeContactIds = Array.isArray(campaign.contactIds) ? campaign.contactIds : [];
+    
+    let localScheduledDate = '';
+    if (campaign.scheduledAt) {
+      const d = new Date(campaign.scheduledAt);
+      if (!isNaN(d.getTime())) {
+        // Javascript Date nesnesini yerel saate göre YYYY-MM-DDThh:mm formatına çevirme
+        const offset = d.getTimezoneOffset() * 60000; 
+        localScheduledDate = new Date(d.getTime() - offset).toISOString().slice(0, 16);
+      }
+    }
+
     setFormData({
       name: campaign.name,
       message: campaign.message,
       groupIds: Array.isArray(campaign.groupIds) ? campaign.groupIds : [],
       contactIds: safeContactIds,
-      scheduledAt: campaign.scheduledAt ? campaign.scheduledAt.substring(0, 16) : '',
+      scheduledAt: localScheduledDate,
       status: campaign.status
     });
     setIsModalOpen(true);

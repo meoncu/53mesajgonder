@@ -433,7 +433,13 @@ export default function CampaignsPage() {
                   <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-blue-600 transition-all duration-500 ease-out"
-                      style={{ width: campaign.sentRecipients && campaign.sentRecipients.length > 0 ? '45%' : '10%' }}
+                      style={{ 
+                        width: (() => {
+                          const sent = campaign.sentRecipients?.length || 0;
+                          const total = campaign.contactIds?.length || 1; // Estimate fallback 
+                          return `${Math.min(100, Math.max(10, Math.round((sent / total) * 100)))}%`;
+                        })()
+                      }}
                     />
                   </div>
                 </div>

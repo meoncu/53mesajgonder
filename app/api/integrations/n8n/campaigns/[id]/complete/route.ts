@@ -40,15 +40,20 @@ export async function POST(
       const contactIds = campaign?.contact_ids || [];
 
       if (groupIds.length > 0) {
-        const { data: groupContacts } = await supabase.from('contacts').select('id').overlaps('group_ids', groupIds);
+        const { data: groupContacts } = await supabase.from('contacts').select('id, primary_phone, normalized_primary_phone').overlaps('group_ids', groupIds);
         if (groupContacts) allContacts = [...allContacts, ...groupContacts];
       }
       if (contactIds.length > 0) {
-        const { data: individualContacts } = await supabase.from('contacts').select('id').in('id', contactIds);
+        const { data: individualContacts } = await supabase.from('contacts').select('id, primary_phone, normalized_primary_phone').in('id', contactIds);
         if (individualContacts) allContacts = [...allContacts, ...individualContacts];
       }
 
-      const uniqueContactIds = new Set(allContacts.map(c => c.id));
+      // Filter to only contacts with valid phones, as the automation only processes those
+      const uniqueContactIds = new Set(
+        allContacts
+          .filter(c => c.primary_phone || c.normalized_primary_phone)
+          .map(c => c.id)
+      );
       const totalExpected = uniqueContactIds.size || 1; // Fallback to 1 to be safe
 
       const updateData: any = {

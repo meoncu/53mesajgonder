@@ -56,7 +56,9 @@ export async function GET() {
           .select('id, full_name, primary_phone, normalized_primary_phone')
           .overlaps('group_ids', groupIds);
         
-        if (!groupError && groupContacts) {
+        if (groupError) {
+          console.error(`Group fetch error for groups [${groupIds}]:`, groupError);
+        } else if (groupContacts) {
           allContacts = [...allContacts, ...groupContacts];
         }
       }
@@ -68,7 +70,9 @@ export async function GET() {
           .select('id, full_name, primary_phone, normalized_primary_phone')
           .in('id', individualContactIds);
         
-        if (!indError && individualContacts) {
+        if (indError) {
+          console.error(`Individual contact fetch error for ids [${individualContactIds}]:`, indError);
+        } else if (individualContacts) {
           allContacts = [...allContacts, ...individualContacts];
         }
       }
